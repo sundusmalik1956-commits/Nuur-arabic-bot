@@ -9,7 +9,11 @@ from telegram.ext import (
     filters,
 )
 
-TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHWzPiG8KfgroMMo"
+# استيراد دوال الدروس من الملفات الأخرى
+from lesson1 import start_lesson
+from lesson2 import start_lesson_2
+
+TOKEN = "ضع_التوكن_هنا"
 
 # النصوص والترجمات لاختيار اللغات والأوقات
 TRANSLATIONS = {
@@ -25,7 +29,7 @@ TRANSLATIONS = {
         ),
         "times_saved": (
             "✅ تم حفظ الموعدين بنجاح:\n- الوقت الأول: {t1}\n- الوقت الثاني:"
-            " {t2}\n\nتم إعداد جدولك اليومي بنجاح! 🚀"
+            " {t2}\n\nتم إعداد جدولك اليومي بنجاح! 🚀\n\nيبدأ الآن الدرس الأول:"
         ),
         "error_time": (
             "الرجاء إدخال الوقت بالتنسيق الصحيح (مثال: 14:30) / Please enter time"
@@ -47,7 +51,7 @@ TRANSLATIONS = {
         ),
         "times_saved": (
             "✅ Saatler başarıyla kaydedildi:\n- 1. Saat: {t1}\n- 2. Saat:"
-            " {t2}\n\nGünlük programınız başarıyla ayarlandı! 🚀"
+            " {t2}\n\nGünlük programınız başarıyla ayarlandı! 🚀\n\nBirinci ders başlıyor:"
         ),
         "error_time": "Lütfen saat formatını doğru girin (Örn: 14:30)",
     },
@@ -62,7 +66,7 @@ TRANSLATIONS = {
         ),
         "times_saved": (
             "✅ Times saved successfully:\n- Time 1: {t1}\n- Time 2:"
-            " {t2}\n\nYour daily schedule has been successfully set up! 🚀"
+            " {t2}\n\nYour daily schedule has been successfully set up! 🚀\n\nStarting first lesson:"
         ),
         "error_time": "Please enter time format HH:MM",
     },
@@ -100,7 +104,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.message.edit_text(t["welcome"] + "\n\n" + t["time_prompt_1"])
 
 
-# 3. استقبال الوقتين تباعاً وحفظهما
+# 3. استقبال الوقتين تباعاً وحفظهما ثم تشغيل الدرس تلقائياً
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
   text = update.message.text.strip()
   lang = context.user_data.get("lang", "en")
@@ -125,9 +129,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
       t1_str = context.user_data["time_1"].strftime("%H:%M")
       t2_str = time_2.strftime("%H:%M")
 
+      # إرسال رسالة تأكيد الحفظ
       await update.message.reply_text(
           t["times_saved"].format(t1=t1_str, t2=t2_str)
       )
+
+      # الانتقال لتشغيل الدرس الأول تلقائياً فور حفظ الأوقات
+      await start_lesson(update, context)
 
     except ValueError:
       await update.message.reply_text(t["error_time"])
@@ -138,9 +146,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
   app = ApplicationBuilder().token(TOKEN).build()
   app.add_handler(CommandHandler("start", start))
+  app.add_handler(CommandHandler("lesson2", start_lesson_2)) # أمر اختياري لتشغيل الدرس الثاني يدوياً
   app.add_handler(CallbackQueryHandler(button_handler))
   app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-  print("البوت يعمل بنجاح...")
+  print("البوت يعمل بنجاح مع ربط جميع الملفات...")
   app.run_polling()
 
 
