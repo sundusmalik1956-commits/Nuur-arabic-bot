@@ -13,7 +13,7 @@ from telegram.ext import (
 from lesson1 import start_lesson
 from lesson2 import start_lesson_2
 
-TOKEN = "ضع_التوكن_هنا"
+TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHWzPiG8KfgroMMo"
 
 # النصوص والترجمات لاختيار اللغات والأوقات
 TRANSLATIONS = {
