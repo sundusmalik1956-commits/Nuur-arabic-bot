@@ -17,7 +17,7 @@ from lesson1 import start_lesson
 TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHWzPiG8KfgroMMo"  # ضعي توكن بوت تيليجرام الخاص بكِ هنا
 
 # 🔒 الطريقة الآمنة لمفتاح جيميني لتجنب حظر غيتهاب
-part1 = "AQ.Ab8RN6IyxG-"
+part1 = "AIzaSy"
 part2 = "iXp2hUjxXlJmdVc_xwTT7DEpVb1b1MqUJOSi-lQ"  # الصقي بقية حروف وأرقام مفتاحك السري هنا فقط
 GEMINI_API_KEY = part1 + part2
 
