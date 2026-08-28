@@ -35,11 +35,11 @@ from telegram.ext import (
 
 BASE_DIR = Path(__file__).resolve().parent
 DATABASE_PATH = BASE_DIR / "noor_bot.db"
-BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("8629063079:AAHvPGBfbTdCJyHXz2EpHWzPiG8KfgroMMo") or os.getenv("TELEGRAM_BOT_TOKEN")
 TIMEZONE = os.getenv("TIMEZONE", "UTC")
-ADMIN_GROUP_ID = os.getenv("ADMIN_GROUP_ID") or os.getenv("GROUP_ID")
+ADMIN_GROUP_ID = os.getenv("ADMIN_GROUP_ID") or os.getenv("-1003785748588")
 # ضع GEMINI_API_KEY أو AI_API_KEY في إعدادات الاستضافة.
-AI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY")
+AI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("iXp2hUjxXlJmdVc_xwTT7DEpVb1b1MqUJOSi-lQ")
 AI_MODEL = os.getenv("AI_MODEL", "gemini-2.5-flash")
 AI_API_URL = os.getenv(
     "AI_API_URL",
