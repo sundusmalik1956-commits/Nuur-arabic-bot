@@ -31,8 +31,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # المتغيرات الأساسية
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+BOT_TOKEN = os.getenv('8840764246:AAFhMuZBDxXjAWybAcYO1MeH6mQi-EOGfk8')
+GEMINI_API_KEY = os.getenv('iXp2hUjxXlJmdVc_xwTT7DEpVb1b1MqUJOSi-lQ')
 ACHIEVEMENT_GROUP_ID = os.getenv('ACHIEVEMENT_GROUP_ID', '-1004491283200')
 
 # التحقق من المتغيرات الأساسية
