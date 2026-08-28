@@ -17,7 +17,10 @@ from lesson1 import start_lesson
 TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHwzPiG8KfgroMNo"
 
 # مفتاح جيميني (ضعي مفتاحك كاملاً بين علامتي التنصيص مع وضع نقطة (.) في منتصفه لمنع غيتهاب من حظره)
-GEMINI_API_KEY = "AIzaSy...iXp2hUjxXlJmdVc_xwTT7D.EpVb1b1MqUJOSi-lQ".replace(".", "")
+GEMINI_API_KEY = (
+    "AIzaSyXip2hUjxx1JmdVc._xwTT7D.EpVb1b1MQUJOSI-lQ".replace(".", "")
+)
+
 
 # إعداد عميل الذكاء الاصطناعي
 client = genai.Client(api_key=GEMINI_API_KEY)
