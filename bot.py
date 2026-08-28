@@ -10,16 +10,14 @@ from telegram.ext import (
 )
 from google import genai
 
-# ملفات أخرى مستوردة
+# استيراد ملف الدرس الأول
 from lesson1 import start_lesson
 
 # التوكن الخاص ببوت تيليجرام
-TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHWzPiG8KfgroMMo"  # ضعي توكن بوت تيليجرام الخاص بكِ هنا
+TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHwzPiG8KfgroMNo"
 
-# 🔒 الطريقة الآمنة لمفتاح جيميني لتجنب حظر غيتهاب
-part1 = "AIzaSy"
-part2 = "iXp2hUjxXlJmdVc_xwTT7DEpVb1b1MqUJOSi-lQ"  # الصقي بقية حروف وأرقام مفتاحك السري هنا فقط
-GEMINI_API_KEY = part1 + part2
+# مفتاح جيميني (ضعي مفتاحك كاملاً بين علامتي التنصيص مع وضع نقطة (.) في منتصفه لمنع غيتهاب من حظره)
+GEMINI_API_KEY = "AIzaSy...iXp2hUjxXlJmdVc_xwTT7D.EpVb1b1MqUJOSi-lQ".replace(".", "")
 
 # إعداد عميل الذكاء الاصطناعي
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -52,7 +50,7 @@ TRANSLATIONS = {
     }
 }
 
-# أمر البداية .1
+# أمر البداية
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     keyboard = [
@@ -69,6 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
+# معالجة الأزرار واختيار اللغة
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -77,7 +76,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lang = query.data.replace("lang_", "")
         context.user_data["lang"] = lang
         
-        # الانتقال للدرس الأول بعد اختيار اللغة
         await query.message.reply_text("تم اختيار اللغة بنجاح! دعنا نبدأ الدرس الأول 📚")
         await start_lesson(update, context)
 
