@@ -1,159 +1,115 @@
-import asyncio
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    ContextTypes,
-    filters,
-    MessageHandler,
-)
+# lesson1.py
+# ملف الدرس الأول: التعريف بالنفس (A1_L1)
 
-TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHWzPiG8KfgroMMo"
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes
 
-# النصوص والترجمات الخاصة بالدرس الأول فقط
-TRANSLATIONS = {
-    "ar": {
-        "lesson_title": "التعريف بالنفس",
-        "unit": "الوحدة الأولى: التعارف والتقديم",
-        "section_intro": "📌 **القسم الأول: التمهيد والتهيئة**",
-        "section_vocab": "📚 **القسم الثاني: المفردات الجديدة**",
-        "section_grammar": "⚖️ **القسم الثالث: القواعد النحوية**",
-        "section_reading": "📖 **القسم الرابع: نص القراءة**",
-        "section_listening": "🎧 **القسم الخامس: تدريب الاستماع**",
-        "next_wait": "⏳ استراحة قصيرة لمدة 30 ثانية قبل الانتقال للقسم التالي...",
-        "congrats": "🎉 مبروك! أكملت درس '{title}' بنجاح.",
-        "intro_text": (
-            "مرحباً بك في أول درس لك في اللغة العربية! 🌟\n\nاليوم سنتعلم كيف"
-            " نعرّف عن أنفسنا بالعربية. هذه المهارة مهمة جداً."
-        ),
-        "grammar_text": (
-            "🔤 **ضمائر المتكلم في اللغة العربية**\n• **أنا** = I\n• **نحن** = We"
-        ),
-        "reading_text": (
-            "📖 **نص قراءة: التعارف**\nمرحباً! اسمي أحمد. أنا من السعودية. عمري"
-            " 25 سنة."
-        ),
-        "listening_transcript": (
-            "مرحباً! اسمي ليلى. أنا من لبنان. عمري 22 سنة."
-        ),
-    },
-    "en": {
-        "lesson_title": "Self Introduction",
-        "unit": "Unit 1",
-        "section_intro": "📌 **Section 1: Introduction**",
-        "section_vocab": "📚 **Section 2: Vocabulary**",
-        "section_grammar": "⚖️ **Section 3: Grammar**",
-        "section_reading": "📖 **Section 4: Reading**",
-        "section_listening": "🎧 **Section 5: Listening**",
-        "next_wait": "⏳ Waiting 30 seconds before the next section...",
-        "congrats": "🎉 Congratulations! You completed '{title}'.",
-        "intro_text": "Welcome to your first Arabic lesson! 🌟",
-        "grammar_text": "Pronouns...",
-        "reading_text": "Reading text...",
-        "listening_transcript": "Listening transcript...",
-    },
+# محتوى الدرس الأول كاملاً ومنظمًا
+LESSON_DATA = {
+    "lesson_id": "A1_L1",
+    "title": "التعريف بالنفس",
+    "unit": "الوحدة الأولى: التعارف والتقديم",
+    "level": "A1",
+    "skills": {
+        "introduction": {
+            "text": "مرحباً بك في أول درس لك في اللغة العربية! 🌟\n\nاليوم سنتعلم كيف نعرّف عن أنفسنا بالعربية. هذه المهارة مهمة جداً لأنها تساعدك في التعرف على الآخرين وبناء علاقات جديدة.\n\nفي هذا الدرس ستتعلم:\n• كيف تقول اسمك\n• كيف تسأل عن اسم الآخرين\n• من أين أنت\n• كيف تصف عمرك ومهنتك",
+            "image": "https://drive.google.com/uc?export=download&id=1fDorqrKC-QvoElNesKW6T_Eb6ezHc10R",
+            "question": "كيف تقدم نفسك بالعربية لشخص تقابله لأول مرة؟ فكر في الجمل التي ستقولها."
+        },
+        "vocabulary": {
+            "table": [
+                {"arabic": "أنا", "english": "I", "transliteration": "Ana"},
+                {"arabic": "اسمي", "english": "My name is", "transliteration": "Ismi"},
+                {"arabic": "ماذا", "english": "What", "transliteration": "Mādha"},
+                {"arabic": "اسمك", "english": "Your name (m)", "transliteration": "Ismuka"},
+                {"arabic": "اسمكِ", "english": "Your name (f)", "transliteration": "Ismuki"},
+                {"arabic": "من", "english": "From", "transliteration": "Min"},
+                {"arabic": "أين", "english": "Where", "transliteration": "Ayna"},
+                {"arabic": "عمري", "english": "My age", "transliteration": "'Umri"},
+                {"arabic": "سنة", "english": "Year(s) old", "transliteration": "Sanah"},
+                {"arabic": "أنا من", "english": "I am from", "transliteration": "Ana min"}
+            ],
+            "image": "https://drive.google.com/uc?export=download&id=16ilPf6aByU4RsuVGYHwoSc-fGrt-KNep"
+        },
+        "grammar": {
+            "explanation": "🔤 **ضمائر المتكلم في اللغة العربية**\n\nفي اللغة العربية، هناك ضمائر تستخدم للحديث عن النفس:\n• **أنا** = I (للمذكر والمؤنث)\n• **نحن** = We\n\n📌 **جملة الاسم في العربية:**\nتتكون من مبتدأ + خبر\nمثال: أنا (مبتدأ) طالب (خبر)\n\n⚠️ **ملاحظة مهمة:**\nالضمائر في العربية لا تحتاج إلى فعل 'يكون' كما في الإنجليزية.\n• أنا طالب = I am a student (وليس 'أنا يكون طالب')",
+            "examples": [
+                "أنا أحمد. = I am Ahmed.",
+                "أنا طالبة. = I am a student (f).",
+                "أنا من مصر. = I am from Egypt.",
+                "عمري عشرون سنة. = I am twenty years old.",
+                "اسمي نور. = My name is Noor."
+            ]
+        },
+        "reading": {
+            "text": "📖 **نص قراءة: التعارف**\n\nمرحباً! اسمي أحمد. أنا من السعودية. عمري 25 سنة. أنا مهندس. أعمل في شركة كبيرة. أدرس اللغة العربية الآن لأنني أحب الثقافة العربية.\n\nأحب السفر والقراءة. في وقت الفراغ، أقرأ الكتب أو أمارس الرياضة.\n\nأنا سعيد بتعلم اللغة العربية، وأتمنى أن أتحدث بها بطلاقة يوماً ما.",
+            "image": "https://drive.google.com/uc?export=download&id=1B_dVPhx23mVpU9rX0v1op-aSdjxREevF",
+            "audio": "https://drive.google.com/uc?export=download&id=1iKsBknxnPN23W6YQn8k7n7B7DeiWKrZM"
+        },
+        "listening": {
+            "audio": "https://drive.google.com/uc?export=download&id=1xdl-V241ySJetMjdCmYY7qwuPLwot8Xs",
+            "image": "https://drive.google.com/uc?export=download&id=1lZ22At0hJHFUdG6frxZh54TpiEyeOWb7",
+            "transcript": "مرحباً! اسمي ليلى. أنا من لبنان. عمري 22 سنة. أنا طالبة في الجامعة. أدرس الطب."
+        },
+        "conversation": {
+            "questions": [
+                "ما هو اسمك؟",
+                "من أين أنت؟",
+                "كم عمرك؟",
+                "ماذا تعمل؟ (أو ماذا تدرس؟)",
+                "ماذا تحب أن تفعل في وقت الفراغ؟"
+            ],
+            "example_conversation": "أحمد: مرحباً! ما اسمك؟\nسارة: اسمي سارة. وأنت؟\nأحمد: أنا أحمد. من أين أنت؟\nسارة: أنا من الأردن. وأنت؟\nأحمد: أنا من السعودية. كم عمرك؟\nسارة: عمري 20 سنة. وأنت؟\nأحمد: عمري 25 سنة. تشرفت بمعرفتك!"
+        }
+    }
 }
 
-# روابط الدرس الأول المباشرة
-LESSON_LINKS = {
-    "intro_image": (
-        "https://drive.google.com/uc?export=download&id=1fDorqrKC-QvoElNesKW6T_Eb6ezHc10R"
-    ),
-    "vocab_image": (
-        "https://drive.google.com/uc?export=download&id=16ilPf6aByU4RsuVGYHwoSc-fGrt-KNep"
-    ),
-    "reading_image": (
-        "https://drive.google.com/uc?export=download&id=1B_dVPhx23mVpU9rX0v1op-aSdjxREevF"
-    ),
-    "reading_audio": (
-        "https://drive.google.com/uc?export=download&id=1iKsBknxnPN23W6YQn8k7n7B7DeiWKrZM"
-    ),
-    "listening_image": (
-        "https://drive.google.com/uc?export=download&id=1lZ22At0hJHFUdG6frxZh54TpiEyeOWb7"
-    ),
-    "listening_audio": (
-        "https://drive.google.com/uc?export=download&id=1xdl-V241ySJetMjdCmYY7qwuPLwot8Xs"
-    ),
-}
-
-VOCAB_LIST = [
-    ("أنا", "I", "Ana"),
-    ("اسمي", "My name is", "Ismi"),
-    ("ماذا", "What", "Mādha"),
-    ("اسمك", "Your name (m)", "Ismuka"),
-    ("اسمكِ", "Your name (f)", "Ismuki"),
-    ("من", "From", "Min"),
-    ("أين", "Where", "Ayna"),
-    ("عمري", "My age", "'Umri"),
-    ("سنة", "Year(s) old", "Sanah"),
-    ("أنا من", "I am from", "Ana min"),
-]
-
-
-# أمر تشغيل الدرس الأول مباشرة
+# دالة بدء الدرس الأول وإرسال محتواه للطالب عبر البوت
 async def start_lesson(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  chat_id = update.effective_chat.id
-  bot = context.bot
-  lang = "ar"  # اللغة الافتراضية للدرس
-  t = TRANSLATIONS[lang]
+    chat = update.effective_chat
+    
+    # 1. إرسال المقدمة مع الصورة
+    intro = LESSON_DATA["skills"]["introduction"]
+    await context.bot.send_photo(
+        chat_id=chat.id,
+        photo=intro["image"],
+        caption=f"📚 **{LESSON_DATA['title']}** ({LESSON_DATA['level']})\n{LESSON_DATA['unit']}\n\n{intro['text']}\n\n💬 **سؤال التفكير:**\n{intro['question']}"
+    )
 
-  # القسم الأول: التمهيد
-  await bot.send_message(
-      chat_id=chat_id,
-      text=(
-          f"🚀 بدء الدرس: {t['lesson_title']}\n{t['unit']}\n\n"
-          + t["section_intro"]
-      ),
-  )
-  await bot.send_photo(chat_id=chat_id, photo=LESSON_LINKS["intro_image"])
-  await bot.send_message(chat_id=chat_id, text=t["intro_text"])
-  await asyncio.sleep(30)
+    # 2. إرسال المفردات
+    vocab = LESSON_DATA["skills"]["vocabulary"]
+    vocab_text = "📖 **الكلمات الجديدة (Vocabulary):**\n\n"
+    for item in vocab["table"]:
+        vocab_text += f"• {item['arabic']} - {item['english']} ({item['transliteration']})\n"
+    
+    await context.bot.send_photo(
+        chat_id=chat.id,
+        photo=vocab["image"],
+        caption=vocab_text
+    )
 
-  # القسم الثاني: المفردات
-  await bot.send_message(chat_id=chat_id, text=t["section_vocab"])
-  await bot.send_photo(chat_id=chat_id, photo=LESSON_LINKS["vocab_image"])
-  vocab_text = "\n".join(
-      [f"• {item[0]} - {item[1]} ({item[2]})" for item in VOCAB_LIST]
-  )
-  await bot.send_message(chat_id=chat_id, text=vocab_text)
-  await asyncio.sleep(30)
+    # 3. إرسال القاعدة النحوية
+    grammar = LESSON_DATA["skills"]["grammar"]
+    grammar_text = f"{grammar['explanation']}\n\n📌 **أمثلة:**\n" + "\n".join([f"• {ex}" for ex in grammar["examples"]])
+    await context.bot.send_message(chat_id=chat.id, text=grammar_text)
 
-  # القسم الثالث: القواعد
-  await bot.send_message(chat_id=chat_id, text=t["section_grammar"])
-  await bot.send_message(
-      chat_id=chat_id, text=t["grammar_text"], parse_mode="Markdown"
-  )
-  await asyncio.sleep(30)
+    # 4. إرسال نص القراءة والصوت
+    reading = LESSON_DATA["skills"]["reading"]
+    await context.bot.send_photo(
+        chat_id=chat.id,
+        photo=reading["image"],
+        caption=reading["text"]
+    )
+    await context.bot.send_audio(chat_id=chat.id, audio=reading["audio"], caption="🎧 تسجيل القراءة")
 
-  # القسم الرابع: القراءة
-  await bot.send_message(chat_id=chat_id, text=t["section_reading"])
-  await bot.send_photo(chat_id=chat_id, photo=LESSON_LINKS["reading_image"])
-  await bot.send_message(
-      chat_id=chat_id, text=t["reading_text"], parse_mode="Markdown"
-  )
-  await bot.send_audio(chat_id=chat_id, audio=LESSON_LINKS["reading_audio"])
-  await asyncio.sleep(30)
+    # 5. إرسال الاستماع
+    listening = LESSON_DATA["skills"]["listening"]
+    await context.bot.send_audio(chat_id=chat.id, audio=listening["audio"], caption="🎧 تسجيل الاستماع (استمع جيداً)")
 
-  # القسم الخامس: الاستماع
-  await bot.send_message(chat_id=chat_id, text=t["section_listening"])
-  await bot.send_photo(chat_id=chat_id, photo=LESSON_LINKS["listening_image"])
-  await bot.send_audio(chat_id=chat_id, audio=LESSON_LINKS["listening_audio"])
-  await bot.send_message(
-      chat_id=chat_id, text=f"📄 Transcript:\n{t['listening_transcript']}"
-  )
-
-  # نهاية الدرس
-  await bot.send_message(
-      chat_id=chat_id, text=t["congrats"].format(title=t["lesson_title"])
-  )
-
-
-def main():
-  app = ApplicationBuilder().token(TOKEN).build()
-  app.add_handler(CommandHandler("start", start_lesson))
-  print("بوت الدرس الأول يعمل بنجاح...")
-  app.run_polling()
-
-
-if __name__ == "__main__":
-  main()
+    # 6. فتح باب المحادثة والتمرين العملي
+    conv = LESSON_DATA["skills"]["conversation"]
+    conv_text = "🗣️ **تدريب المحادثة:**\nأجب الآن عن هذه الأسئلة بنفسك (كتابةً أو تسجيلاً صوتياً):\n\n"
+    for q in conv["questions"]:
+        conv_text += f"❓ {q}\n"
+    
+    await context.bot.send_message(chat_id=chat.id, text=conv_text)
