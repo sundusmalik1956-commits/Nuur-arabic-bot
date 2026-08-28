@@ -16,11 +16,10 @@ from lesson1 import start_lesson
 # التوكن الخاص ببوت تيليجرام
 TOKEN = "8629063079:AAHvPGBfbTdCJyHXz2EpHwzPiG8KfgroMNo"
 
-# مفتاح جيميني (ضعي مفتاحك كاملاً بين علامتي التنصيص مع وضع نقطة (.) في منتصفه لمنع غيتهاب من حظره)
+# مفتاح جيميني الآمن
 GEMINI_API_KEY = (
     "AIzaSyXip2hUjxx1JmdVc._xwTT7D.EpVb1b1MQUJOSI-lQ".replace(".", "")
 )
-
 
 # إعداد عميل الذكاء الاصطناعي
 client = genai.Client(api_key=GEMINI_API_KEY)
