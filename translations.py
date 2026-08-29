@@ -1,331 +1,152 @@
-# translations.py
-from typing import Dict, List
+# -*- coding: utf-8 -*-
+"""
+translations.py
+كل نصوص واجهة البوت (التعليمات، الأزرار، الرسائل) — وليس محتوى الدرس العربي نفسه.
 
-# ترجمات الواجهة
-TRANSLATIONS = {
-    'ar': {
-        # رسائل عامة
-        'start': "👋 مرحباً بك في نور بوت!\n\nاختر لغة التعليم:",
-        'language_selected': "✅ تم اختيار اللغة: {}",
-        'choose_time': "⏰ اختر وقت استلام الدروس اليومية:",
-        'time_selected': "✅ تم حفظ الوقت: {}\n\nسيتم إرسال الدروس في هذا الوقت يومياً (الأحد - الخميس).",
-        'main_menu': "🏠 القائمة الرئيسية\n\n👤 مرحباً {name}!\n📚 الدرس الحالي: {current}\n✅ الدروس المكتملة: {completed}/18",
-        'continue_lesson': "📖 متابعة الدرس",
-        'progress': "📊 التقدم",
-        'settings': "⚙️ الإعدادات",
-        'back': "🔙 رجوع",
-        'lesson_not_found': "❌ الدرس غير موجود. الرجاء المحاولة مرة أخرى.",
-        'lesson_completed': "🎉 مبروك! لقد أكملت الدرس {lesson} بنجاح!",
-        'next_lesson': "📚 الدرس التالي: {next}\nسيتم إرساله في الوقت المحدد.",
-        'subscription_expired': """🎓 انتهت الفترة التجريبية المجانية.
+إضافة لغة جديدة (مثال فرنسي):
+    1. أضف "fr" لقائمة SUPPORTED_LANGUAGES أدناه مع اسمها وعلمها.
+    2. أضف "fr": "..." داخل كل مفتاح في TEXTS.
+    لا حاجة لتعديل أي ملف درس أو أي كود آخر.
+"""
 
-البرنامج الكامل مدفوع.
-السعر: 5$
-
-للاشتراك، يرجى التواصل مع الدعم:
-@NoorBotSupport""",
-        'subscription_info': "📚 معلومات الاشتراك",
-        
-        # التقدم
-        'progress_details': """📊 **تقدمك في البرنامج**
-
-الدروس المكتملة: {completed}/{total}
-النسبة المئوية: {percentage:.1f}%
-
-{progress_bar}
-
-الدرس الحالي: {current}""",
-        
-        # الإعدادات
-        'settings_menu': "⚙️ **الإعدادات**\n\nاختر الإعداد الذي تريد تعديله:",
-        'change_language': "🌐 تغيير اللغة",
-        'change_time': "⏰ تغيير وقت الدرس",
-        'select_language': "🌐 اختر اللغة:",
-        'choose_new_time': "⏰ اختر الوقت الجديد:",
-        'language_updated': "✅ تم تغيير اللغة إلى: {}",
-        'time_updated': "✅ تم تغيير وقت الدرس إلى: {}",
-        
-        # إعلانات الإنجاز
-        'achievement_announcement': """🎉 **إنجاز جديد في نور بوت!**
-
-👤 الطالب: {name}
-📚 أتم الدرس {lesson_num}: {lesson_name}
-
-🌟 أحسنت! استمر في التعلم.""",
-        
-        # أسماء الدروس
-        'lesson_1_name': 'التعريف بالنفس',
-        'lesson_2_name': 'العائلة والأصدقاء',
-        'lesson_3_name': 'الحياة اليومية',
-        'lesson_4_name': 'الطعام والشراب',
-        'lesson_5_name': 'السفر والتنقل',
-        'lesson_6_name': 'التسوق',
-        'lesson_7_name': 'الصحة',
-        'lesson_8_name': 'الترفيه',
-        'lesson_9_name': 'العمل والمهنة',
-        'lesson_10_name': 'التعليم',
-        'lesson_11_name': 'الطقس والفصول',
-        'lesson_12_name': 'المنزل',
-        'lesson_13_name': 'الملابس',
-        'lesson_14_name': 'الرياضة',
-        'lesson_15_name': 'التكنولوجيا',
-        'lesson_16_name': 'الثقافة',
-        'lesson_17_name': 'الطبيعة',
-        'lesson_18_name': 'المستقبل والأحلام',
-        
-        # أزرار الدروس
-        'start_quiz': "📝 بدء الاختبار",
-        'start_lesson': "📖 بدء الدرس",
-        
-        # رسائل الشهادة
-        'certificate_completion': """🎓 **شهادة إتمام البرنامج**
-
-تهانينا {name}!
-
-لقد أكملت بنجاح برنامج نور بوت لتعليم اللغة العربية.
-18 درساً من التعلم المكثف.
-
-🌟 أنت الآن قادر على:
-• التحدث بالعربية في المواقف اليومية
-• فهم النصوص العربية
-• كتابة نصوص بالعربية
-
-استمر في التعلم والتطور!""",
-        
-        # رسائل التدريبات
-        'correct_answer': "✅ صحيح!",
-        'wrong_answer': "❌ غير صحيح. حاول مرة أخرى.",
-        'quiz_completed': "🎉 أحسنت! لقد أكملت جميع التدريبات.",
-        'try_again': "🔄 حاول مرة أخرى",
-        
-        # رسائل المحادثة والكتابة
-        'conversation_start': "💬 بدأ المحادثة",
-        'writing_submit': "✍️ أرسل كتابتك"
-    },
-    'en': {
-        # General messages
-        'start': "👋 Welcome to Noor Bot!\n\nChoose your language:",
-        'language_selected': "✅ Language selected: {}",
-        'choose_time': "⏰ Choose your daily lesson time:",
-        'time_selected': "✅ Time saved: {}\n\nLessons will be sent at this time daily (Sunday - Thursday).",
-        'main_menu': "🏠 Main Menu\n\n👤 Welcome {name}!\n📚 Current lesson: {current}\n✅ Completed lessons: {completed}/18",
-        'continue_lesson': "📖 Continue Lesson",
-        'progress': "📊 Progress",
-        'settings': "⚙️ Settings",
-        'back': "🔙 Back",
-        'lesson_not_found': "❌ Lesson not found. Please try again.",
-        'lesson_completed': "🎉 Congratulations! You have completed lesson {lesson} successfully!",
-        'next_lesson': "📚 Next lesson: {next}\nIt will be sent at the scheduled time.",
-        'subscription_expired': """🎓 The free trial period has ended.
-
-The full program is paid.
-Price: $5
-
-To subscribe, please contact support:
-@NoorBotSupport""",
-        'subscription_info': "📚 Subscription Information",
-        
-        # Progress
-        'progress_details': """📊 **Your Progress**
-
-Completed lessons: {completed}/{total}
-Percentage: {percentage:.1f}%
-
-{progress_bar}
-
-Current lesson: {current}""",
-        
-        # Settings
-        'settings_menu': "⚙️ **Settings**\n\nChoose what you want to change:",
-        'change_language': "🌐 Change Language",
-        'change_time': "⏰ Change Lesson Time",
-        'select_language': "🌐 Select language:",
-        'choose_new_time': "⏰ Choose new time:",
-        'language_updated': "✅ Language changed to: {}",
-        'time_updated': "✅ Lesson time changed to: {}",
-        
-        # Achievement announcements
-        'achievement_announcement': """🎉 **New Achievement in Noor Bot!**
-
-👤 Student: {name}
-📚 Completed lesson {lesson_num}: {lesson_name}
-
-🌟 Well done! Keep learning.""",
-        
-        # Lesson names
-        'lesson_1_name': 'Self Introduction',
-        'lesson_2_name': 'Family and Friends',
-        'lesson_3_name': 'Daily Life',
-        'lesson_4_name': 'Food and Drink',
-        'lesson_5_name': 'Travel',
-        'lesson_6_name': 'Shopping',
-        'lesson_7_name': 'Health',
-        'lesson_8_name': 'Entertainment',
-        'lesson_9_name': 'Work',
-        'lesson_10_name': 'Education',
-        'lesson_11_name': 'Weather and Seasons',
-        'lesson_12_name': 'Home',
-        'lesson_13_name': 'Clothing',
-        'lesson_14_name': 'Sports',
-        'lesson_15_name': 'Technology',
-        'lesson_16_name': 'Culture',
-        'lesson_17_name': 'Nature',
-        'lesson_18_name': 'Future and Dreams',
-        
-        # Lesson buttons
-        'start_quiz': "📝 Start Quiz",
-        'start_lesson': "📖 Start Lesson",
-        
-        # Certificate messages
-        'certificate_completion': """🎓 **Certificate of Completion**
-
-Congratulations {name}!
-
-You have successfully completed the Noor Bot Arabic Language Program.
-18 lessons of intensive learning.
-
-🌟 You are now able to:
-• Speak Arabic in daily situations
-• Understand Arabic texts
-• Write in Arabic
-
-Keep learning and growing!""",
-        
-        # Quiz messages
-        'correct_answer': "✅ Correct!",
-        'wrong_answer': "❌ Not correct. Try again.",
-        'quiz_completed': "🎉 Well done! You have completed all exercises.",
-        'try_again': "🔄 Try again",
-        
-        # Conversation and writing
-        'conversation_start': "💬 Conversation started",
-        'writing_submit': "✍️ Submit your writing"
-    },
-    'tr': {
-        # Genel mesajlar
-        'start': "👻 Noor Bot'a Hoş Geldiniz!\n\nEğitim dilinizi seçin:",
-        'language_selected': "✅ Dil seçildi: {}",
-        'choose_time': "⏰ Günlük ders saatinizi seçin:",
-        'time_selected': "✅ Saat kaydedildi: {}\n\nDersler her gün bu saatte gönderilecektir (Pazar - Perşembe).",
-        'main_menu': "🏠 Ana Menü\n\n👻 Hoş geldin {name}!\n📚 Mevcut ders: {current}\n✅ Tamamlanan dersler: {completed}/18",
-        'continue_lesson': "📖 Derse Devam Et",
-        'progress': "📊 İlerleme",
-        'settings': "⚙️ Ayarlar",
-        'back': "🔙 Geri",
-        'lesson_not_found': "❌ Ders bulunamadı. Lütfen tekrar deneyin.",
-        'lesson_completed': "🎉 Tebrikler! {lesson}. dersi başarıyla tamamladınız!",
-        'next_lesson': "📚 Sonraki ders: {next}\nBelirlenen saatte gönderilecektir.",
-        'subscription_expired': """🎓 Ücretsiz deneme süresi sona erdi.
-
-Tam program ücretlidir.
-Fiyat: 5$
-
-Abone olmak için destek ile iletişime geçin:
-@NoorBotSupport""",
-        'subscription_info': "📚 Abonelik Bilgileri",
-        
-        # İlerleme
-        'progress_details': """📊 **İlerlemeniz**
-
-Tamamlanan dersler: {completed}/{total}
-Yüzde: {percentage:.1f}%
-
-{progress_bar}
-
-Mevcut ders: {current}""",
-        
-        # Ayarlar
-        'settings_menu': "⚙️ **Ayarlar**\n\nDeğiştirmek istediğiniz ayarı seçin:",
-        'change_language': "🌐 Dili Değiştir",
-        'change_time': "⏰ Ders Saatini Değiştir",
-        'select_language': "🌐 Dil seçin:",
-        'choose_new_time': "⏰ Yeni saat seçin:",
-        'language_updated': "✅ Dil değiştirildi: {}",
-        'time_updated': "✅ Ders saati değiştirildi: {}",
-        
-        # Başarı duyuruları
-        'achievement_announcement': """🎉 **Noor Bot'ta Yeni Başarı!**
-
-👤 Öğrenci: {name}
-📚 {lesson_num}. dersi tamamladı: {lesson_name}
-
-🌟 Aferin! Öğrenmeye devam et.""",
-        
-        # Ders isimleri
-        'lesson_1_name': 'Kendini Tanıtma',
-        'lesson_2_name': 'Aile ve Arkadaşlar',
-        'lesson_3_name': 'Günlük Hayat',
-        'lesson_4_name': 'Yemek ve İçecek',
-        'lesson_5_name': 'Seyahat',
-        'lesson_6_name': 'Alışveriş',
-        'lesson_7_name': 'Sağlık',
-        'lesson_8_name': 'Eğlence',
-        'lesson_9_name': 'İş',
-        'lesson_10_name': 'Eğitim',
-        'lesson_11_name': 'Hava ve Mevsimler',
-        'lesson_12_name': 'Ev',
-        'lesson_13_name': 'Giyim',
-        'lesson_14_name': 'Spor',
-        'lesson_15_name': 'Teknoloji',
-        'lesson_16_name': 'Kültür',
-        'lesson_17_name': 'Doğa',
-        'lesson_18_name': 'Gelecek ve Hayaller',
-        
-        # Ders butonları
-        'start_quiz': "📝 Teste Başla",
-        'start_lesson': "📖 Derse Başla",
-        
-        # Sertifika mesajları
-        'certificate_completion': """🎓 **Tamamlama Sertifikası**
-
-Tebrikler {name}!
-
-Noor Bot Arapça Dil Programını başarıyla tamamladınız.
-18 ders yoğun öğrenme.
-
-🌟 Artık şunları yapabiliyorsunuz:
-• Günlük durumlarda Arapça konuşma
-• Arapça metinleri anlama
-• Arapça yazma
-
-Öğrenmeye ve gelişmeye devam edin!""",
-        
-        # Test mesajları
-        'correct_answer': "✅ Doğru!",
-        'wrong_answer': "❌ Yanlış. Tekrar dene.",
-        'quiz_completed': "🎉 Aferin! Tüm alıştırmaları tamamladınız.",
-        'try_again': "🔄 Tekrar dene",
-        
-        # Konuşma ve yazma
-        'conversation_start': "💬 Konuşma başladı",
-        'writing_submit': "✍️ Yazınızı gönderin"
-    }
+# كل لغة مدعومة: الكود -> (الاسم المعروض، العلم)
+SUPPORTED_LANGUAGES = {
+    "ar": ("العربية", "🇸🇦"),
+    "en": ("English", "🇬🇧"),
+    "tr": ("Türkçe", "🇹🇷"),
+    # "fr": ("Français", "🇫🇷"),
+    # "es": ("Español", "🇪🇸"),
+    # "de": ("Deutsch", "🇩🇪"),
 }
 
-def get_text(key: str, lang: str = 'ar') -> str:
-    """الحصول على النص المترجم"""
-    if lang in TRANSLATIONS:
-        return TRANSLATIONS[lang].get(key, key)
-    return TRANSLATIONS['ar'].get(key, key)
+DEFAULT_LANG = "ar"
 
-def get_languages() -> Dict[str, str]:
-    """الحصول على قائمة اللغات المدعومة"""
-    return {
-        'ar': 'العربية',
-        'en': 'English',
-        'tr': 'Türkçe'
-    }
+TEXTS = {
+    "choose_language": {
+        "ar": "أهلاً بك 🌙\nاختر لغة التعليم:",
+        "en": "Welcome 🌙\nChoose your learning language:",
+        "tr": "Hoş geldiniz 🌙\nEğitim dilinizi seçin:",
+    },
+    "welcome": {
+        "ar": "أهلاً وسهلاً بك في نور بوت 🌙📖\nبرنامج من 18 درسًا لتعلّم اللغة العربية خطوة بخطوة.",
+        "en": "Welcome to Noor Bot 🌙📖\nAn 18-lesson program to learn Arabic step by step.",
+        "tr": "Nur Bot'a hoş geldiniz 🌙📖\nArapçayı adım adım öğrenmek için 18 derslik bir program.",
+    },
+    "trial_info": {
+        "ar": "🎁 أول 5 دروس مجانية تمامًا.\nبعدها يتطلب الاشتراك (5$/برنامج).\n📅 أيام الدراسة: الأحد إلى الخميس (لا دروس الجمعة والسبت).",
+        "en": "🎁 The first 5 lessons are completely free.\nAfter that a subscription is required ($5/program).\n📅 Study days: Sunday to Thursday (no lessons on Friday or Saturday).",
+        "tr": "🎁 İlk 5 ders tamamen ücretsizdir.\nSonrasında abonelik gereklidir (program başına 5$).\n📅 Ders günleri: Pazar-Perşembe (Cuma ve Cumartesi ders yok).",
+    },
+    "ask_time": {
+        "ar": "اختر الوقت المناسب لوصول درسك اليومي:",
+        "en": "Choose the time you'd like your daily lesson to arrive:",
+        "tr": "Günlük dersinizin gelmesini istediğiniz saati seçin:",
+    },
+    "time_confirmed": {
+        "ar": "✅ تم! سيصلك الدرس يوميًا (الأحد-الخميس) الساعة {time}.",
+        "en": "✅ Done! Your lesson will arrive daily (Sun-Thu) at {time}.",
+        "tr": "✅ Tamam! Dersiniz her gün (Pazar-Perşembe) saat {time}'de gelecek.",
+    },
+    "lesson_starting_today": {
+        "ar": "سيبدأ درسك الأول اليوم في هذا الوقت 🎉",
+        "en": "Your first lesson will start today at this time 🎉",
+        "tr": "İlk dersiniz bugün bu saatte başlayacak 🎉",
+    },
+    "lesson_starting_next_study_day": {
+        "ar": "سيبدأ درسك الأول في أقرب يوم دراسي القادم، في هذا الوقت 🎉",
+        "en": "Your first lesson will start on the next study day, at this time 🎉",
+        "tr": "İlk dersiniz bir sonraki ders gününde bu saatte başlayacak 🎉",
+    },
+    "skill_intro": {"ar": "🔹 التمهيد", "en": "🔹 Warm-up", "tr": "🔹 Giriş"},
+    "skill_vocab": {"ar": "🔹 المفردات", "en": "🔹 Vocabulary", "tr": "🔹 Kelime Bilgisi"},
+    "skill_grammar": {"ar": "🔹 القواعد", "en": "🔹 Grammar", "tr": "🔹 Dil Bilgisi"},
+    "skill_reading": {"ar": "🔹 القراءة", "en": "🔹 Reading", "tr": "🔹 Okuma"},
+    "skill_listening": {"ar": "🔹 الاستماع", "en": "🔹 Listening", "tr": "🔹 Dinleme"},
+    "skill_speaking": {"ar": "🔹 المحادثة", "en": "🔹 Speaking", "tr": "🔹 Konuşma"},
+    "skill_writing": {"ar": "🔹 الكتابة", "en": "🔹 Writing", "tr": "🔹 Yazma"},
+    "correct_answer": {"ar": "✅ إجابة صحيحة!", "en": "✅ Correct!", "tr": "✅ Doğru!"},
+    "wrong_answer_retry": {
+        "ar": "❌ ليست صحيحة تمامًا. حاول مرة أخرى.",
+        "en": "❌ Not quite. Try again.",
+        "tr": "❌ Tam olarak değil. Tekrar deneyin.",
+    },
+    "speaking_prompt_note": {
+        "ar": "🎙️ أرسل إجابتك كتسجيل صوتي أو رسالة نصية، وسيصحّحها الذكاء الاصطناعي فورًا.",
+        "en": "🎙️ Send your answer as a voice message or text, and AI will correct it right away.",
+        "tr": "🎙️ Cevabınızı sesli mesaj veya yazı olarak gönderin, yapay zeka hemen düzeltecek.",
+    },
+    "writing_prompt_note": {
+        "ar": "✍️ اكتب إجابتك، وسيصحّحها الذكاء الاصطناعي فورًا.",
+        "en": "✍️ Write your answer, and AI will correct it right away.",
+        "tr": "✍️ Cevabınızı yazın, yapay zeka hemen düzeltecek.",
+    },
+    "ai_analyzing": {
+        "ar": "⏳ جارٍ تحليل إجابتك...",
+        "en": "⏳ Analyzing your answer...",
+        "tr": "⏳ Cevabınız analiz ediliyor...",
+    },
+    "ai_correction_unavailable": {
+        "ar": "⚠️ تعذّر تصحيح إجابتك آليًا الآن، لكن تم حفظها وستُراجَع قريبًا.",
+        "en": "⚠️ Couldn't auto-correct your answer right now, but it's been saved and will be reviewed soon.",
+        "tr": "⚠️ Cevabınız şu anda otomatik düzeltilemedi, ancak kaydedildi ve yakında incelenecek.",
+    },
+    "lesson_complete": {
+        "ar": "🎉 أحسنت! أتممت هذا الدرس بنجاح.",
+        "en": "🎉 Well done! You completed this lesson.",
+        "tr": "🎉 Aferin! Bu dersi tamamladınız.",
+    },
+    "program_complete": {
+        "ar": "🏆 مبارك! أتممت برنامج نور بالكامل (18/18). شهادتك قيد التجهيز.",
+        "en": "🏆 Congratulations! You completed the full Noor program (18/18). Your certificate is being prepared.",
+        "tr": "🏆 Tebrikler! Nur programını tamamen bitirdiniz (18/18). Sertifikanız hazırlanıyor.",
+    },
+    "trial_ended": {
+        "ar": "🎓 انتهت الفترة التجريبية المجانية.\nالبرنامج الكامل مدفوع (5$). سيتم تفعيل الاشتراك قريبًا.",
+        "en": "🎓 Your free trial has ended.\nThe full program is paid ($5). Subscription activation is coming soon.",
+        "tr": "🎓 Ücretsiz deneme süreniz sona erdi.\nTam program ücretlidir (5$). Abonelik yakında etkinleştirilecek.",
+    },
+    "not_a_study_day": {
+        "ar": "اليوم ليس يوم دراسة (الجمعة والسبت إجازة) 🌙",
+        "en": "Today is not a study day (Friday & Saturday are off) 🌙",
+        "tr": "Bugün ders günü değil (Cuma ve Cumartesi tatil) 🌙",
+    },
+    "progress_title": {"ar": "📊 تقدّمك", "en": "📊 Your Progress", "tr": "📊 İlerlemeniz"},
+    "progress_body": {
+        "ar": "الدروس المكتملة: {completed}/18\nالدرس الحالي: {current}",
+        "en": "Completed lessons: {completed}/18\nCurrent lesson: {current}",
+        "tr": "Tamamlanan dersler: {completed}/18\nMevcut ders: {current}",
+    },
+    "settings_title": {"ar": "⚙️ الإعدادات", "en": "⚙️ Settings", "tr": "⚙️ Ayarlar"},
+    "settings_change_language": {"ar": "🌐 تغيير اللغة", "en": "🌐 Change language", "tr": "🌐 Dili değiştir"},
+    "settings_change_time": {"ar": "⏰ تغيير الوقت", "en": "⏰ Change time", "tr": "⏰ Saati değiştir"},
+    "language_changed": {"ar": "✅ تم تغيير اللغة.", "en": "✅ Language changed.", "tr": "✅ Dil değiştirildi."},
+    "no_active_program": {
+        "ar": "لم تبدأ البرنامج بعد. أرسل /start للبدء.",
+        "en": "You haven't started the program yet. Send /start to begin.",
+        "tr": "Programa henüz başlamadınız. Başlamak için /start gönderin.",
+    },
+    "generic_error": {
+        "ar": "⚠️ حدث خطأ غير متوقع. تم إبلاغ المسؤولين، حاول لاحقًا.",
+        "en": "⚠️ An unexpected error occurred. Admins have been notified, please try again later.",
+        "tr": "⚠️ Beklenmeyen bir hata oluştu. Yöneticilere bildirildi, lütfen daha sonra tekrar deneyin.",
+    },
+}
 
-def get_times() -> List[str]:
-    """الحصول على قائمة الأوقات المتاحة"""
-    return [
-        '06:00', '07:00', '08:00', '09:00', '10:00',
-        '11:00', '12:00', '13:00', '14:00', '15:00',
-        '16:00', '17:00', '18:00', '19:00', '20:00',
-        '21:00', '22:00', '23:00'
-    ]
 
-def get_lesson_name(lesson_num: int, lang: str = 'ar') -> str:
-    """الحصول على اسم الدرس"""
-    key = f'lesson_{lesson_num}_name'
-    return get_text(key, lang)
+def t(key: str, lang: str = DEFAULT_LANG, **kwargs) -> str:
+    """إرجاع النص المترجم؛ يعود للعربية إن لم توجد ترجمة للغة المطلوبة."""
+    entry = TEXTS.get(key)
+    if entry is None:
+        return key
+    text = entry.get(lang) or entry.get(DEFAULT_LANG) or ""
+    if kwargs:
+        text = text.format(**kwargs)
+    return text
+
+
+def language_keyboard_rows():
+    """يبني صفوف أزرار اختيار اللغة من SUPPORTED_LANGUAGES تلقائيًا."""
+    rows = []
+    for code, (name, flag) in SUPPORTED_LANGUAGES.items():
+        rows.append((f"{flag} {name}", f"lang|{code}"))
+    return rows
