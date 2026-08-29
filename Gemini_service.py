@@ -18,7 +18,7 @@ class GeminiService:
         if self.api_key:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-pro')
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
                 self.initialized = True
                 logger.info("تم تهيئة Gemini بنجاح")
             except Exception as e:
