@@ -1,312 +1,296 @@
-# database.py
+# -*- coding: utf-8 -*-
+"""
+database.py
+طبقة SQLite الوحيدة لحفظ كل حالة البوت. لا يُعتمد على context.user_data لأي بيانات
+يجب أن تبقى بعد إعادة تشغيل البوت — فقط هذا الملف هو مصدر الحقيقة.
+
+الجداول:
+    users           بيانات الطالب الأساسية والاشتراك والتقدّم
+    lesson_progress سجل تقدّم الطالب داخل كل درس (أي مهارات أتمّها فعليًا)
+    answers         كل إجابة اختيار من متعدد أرسلها الطالب (للتتبّع والتحليل)
+    completions     سجل كل درس أُتمّ فعليًا (لإعلان الإنجاز وأرشفته)
+"""
+
 import sqlite3
-import json
-from datetime import datetime
-from typing import Optional, Dict, Any, List
+import os
 import logging
+from datetime import datetime
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-class Database:
-    """قاعدة البيانات الرئيسية للبوت"""
-    
-    def __init__(self, db_path: str = "noor_bot.db"):
-        self.db_path = db_path
-        self.init_db()
-    
-    def get_connection(self):
-        """الحصول على اتصال بقاعدة البيانات"""
-        return sqlite3.connect(self.db_path)
-    
-    def init_db(self):
-        """تهيئة قاعدة البيانات وإنشاء الجداول"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # جدول المستخدمين
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY,
-                    username TEXT,
-                    first_name TEXT,
-                    last_name TEXT,
-                    language TEXT DEFAULT 'ar',
-                    lesson_time TEXT,
-                    current_lesson INTEGER DEFAULT 1,
-                    completed_lessons INTEGER DEFAULT 0,
-                    completed_skills TEXT DEFAULT '{}',
-                    subscription_status TEXT DEFAULT 'trial',
-                    subscription_date TEXT,
-                    certificate_status TEXT DEFAULT 'pending',
-                    certificate_id TEXT,
-                    certificate_date TEXT,
-                    active INTEGER DEFAULT 1,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # جدول تقدم المهارات
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS skill_progress (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    lesson_num INTEGER,
-                    skill_name TEXT,
-                    completed INTEGER DEFAULT 0,
-                    attempts INTEGER DEFAULT 0,
-                    last_attempt TEXT,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id),
-                    UNIQUE(user_id, lesson_num, skill_name)
-                )
-            """)
-            
-            # جدول إجابات الطلاب
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS student_answers (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    lesson_num INTEGER,
-                    skill_name TEXT,
-                    question_index INTEGER,
-                    answer TEXT,
-                    is_correct INTEGER,
-                    attempts INTEGER DEFAULT 1,
-                    answer_time TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id)
-                )
-            """)
-            
-            # جدول المحادثات
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    lesson_num INTEGER,
-                    message TEXT,
-                    response TEXT,
-                    evaluation TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id)
-                )
-            """)
-            
-            # جدول الكتابات
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS writing_submissions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    lesson_num INTEGER,
-                    text TEXT,
-                    correction TEXT,
-                    evaluation TEXT,
-                    score REAL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id)
-                )
-            """)
-            
-            conn.commit()
-            logger.info("تم تهيئة قاعدة البيانات بنجاح")
-    
-    def add_user(self, user_id: int, username: str = None, first_name: str = None, language: str = 'ar'):
-        """إضافة مستخدم جديد"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # التحقق من وجود المستخدم
-            cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
-            if cursor.fetchone():
-                return self.update_user(user_id, {'language': language})
-            
-            cursor.execute("""
-                INSERT INTO users (user_id, username, first_name, language, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (user_id, username, first_name, language, datetime.now(), datetime.now()))
-            conn.commit()
-            logger.info(f"تم إضافة مستخدم جديد: {user_id}")
-    
-    def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """الحصول على بيانات المستخدم"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-            row = cursor.fetchone()
-            
-            if row:
-                columns = [description[0] for description in cursor.description]
-                user = dict(zip(columns, row))
-                
-                # تحويل JSON إلى قاموس
-                if user.get('completed_skills'):
-                    try:
-                        user['completed_skills'] = json.loads(user['completed_skills'])
-                    except:
-                        user['completed_skills'] = {}
-                else:
-                    user['completed_skills'] = {}
-                
-                return user
-            return None
-    
-    def update_user(self, user_id: int, data: Dict[str, Any]) -> bool:
-        """تحديث بيانات المستخدم"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            # معالجة البيانات الخاصة
-            if 'completed_skills' in data and isinstance(data['completed_skills'], dict):
-                data['completed_skills'] = json.dumps(data['completed_skills'])
-            
-            # بناء استعلام التحديث
-            set_clause = ", ".join([f"{key} = ?" for key in data.keys()])
-            values = list(data.values()) + [datetime.now(), user_id]
-            
-            query = f"UPDATE users SET {set_clause}, updated_at = ? WHERE user_id = ?"
-            cursor.execute(query, values)
-            conn.commit()
-            
-            return cursor.rowcount > 0
-    
-    def get_active_users(self) -> List[Dict[str, Any]]:
-        """الحصول على المستخدمين النشطين"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT * FROM users 
-                WHERE active = 1 AND lesson_time IS NOT NULL
-            """)
-            rows = cursor.fetchall()
-            
-            columns = [description[0] for description in cursor.description]
-            users = []
-            
-            for row in rows:
-                user = dict(zip(columns, row))
-                if user.get('completed_skills'):
-                    try:
-                        user['completed_skills'] = json.loads(user['completed_skills'])
-                    except:
-                        user['completed_skills'] = {}
-                else:
-                    user['completed_skills'] = {}
-                users.append(user)
-            
-            return users
-    
-    def save_skill_progress(self, user_id: int, lesson_num: int, skill_name: str, completed: bool = True):
-        """حفظ تقدم المهارة"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO skill_progress (user_id, lesson_num, skill_name, completed, last_attempt)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(user_id, lesson_num, skill_name) DO UPDATE SET
-                completed = ?, last_attempt = ?, attempts = attempts + 1
-            """, (user_id, lesson_num, skill_name, 1 if completed else 0, datetime.now(),
-                  1 if completed else 0, datetime.now()))
-            conn.commit()
-    
-    def save_answer(self, user_id: int, lesson_num: int, skill_name: str, 
-                   question_index: int, answer: str, is_correct: bool):
-        """حفظ إجابة الطالب"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO student_answers 
-                (user_id, lesson_num, skill_name, question_index, answer, is_correct, answer_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (user_id, lesson_num, skill_name, question_index, answer, 1 if is_correct else 0, datetime.now()))
-            conn.commit()
-    
-    def save_conversation(self, user_id: int, lesson_num: int, message: str, 
-                         response: str, evaluation: str = None):
-        """حفظ المحادثة"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO conversations (user_id, lesson_num, message, response, evaluation, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (user_id, lesson_num, message, response, evaluation, datetime.now()))
-            conn.commit()
-    
-    def save_writing(self, user_id: int, lesson_num: int, text: str, 
-                    correction: str = None, evaluation: str = None, score: float = None):
-        """حفظ الكتابة"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO writing_submissions 
-                (user_id, lesson_num, text, correction, evaluation, score, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (user_id, lesson_num, text, correction, evaluation, score, datetime.now()))
-            conn.commit()
-    
-    def get_skill_progress(self, user_id: int, lesson_num: int) -> List[str]:
-        """الحصول على المهارات المكتملة للدرس"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT skill_name FROM skill_progress
-                WHERE user_id = ? AND lesson_num = ? AND completed = 1
-            """, (user_id, lesson_num))
-            rows = cursor.fetchall()
-            return [row[0] for row in rows]
-    
-    def is_lesson_completed(self, user_id: int, lesson_num: int) -> bool:
-        """التحقق من اكتمال الدرس"""
-        required_skills = ['introduction', 'vocabulary', 'grammar', 'reading', 'listening', 'conversation', 'writing']
-        completed = self.get_skill_progress(user_id, lesson_num)
-        return all(skill in completed for skill in required_skills)
-    
-    def update_subscription(self, user_id: int, status: str, date: str = None):
-        """تحديث حالة الاشتراك"""
-        data = {'subscription_status': status}
-        if date:
-            data['subscription_date'] = date
-        return self.update_user(user_id, data)
-    
-    def update_certificate(self, user_id: int, certificate_id: str, status: str = 'issued'):
-        """تحديث بيانات الشهادة"""
-        data = {
-            'certificate_status': status,
-            'certificate_id': certificate_id,
-            'certificate_date': datetime.now().isoformat()
-        }
-        return self.update_user(user_id, data)
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """الحصول على إحصائيات عامة"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            stats = {}
-            
-            # عدد المستخدمين
-            cursor.execute("SELECT COUNT(*) FROM users")
-            stats['total_users'] = cursor.fetchone()[0]
-            
-            # المستخدمين النشطين
-            cursor.execute("SELECT COUNT(*) FROM users WHERE active = 1")
-            stats['active_users'] = cursor.fetchone()[0]
-            
-            # المستخدمين المكتملين
-            cursor.execute("SELECT COUNT(*) FROM users WHERE completed_lessons >= 18")
-            stats['completed_program'] = cursor.fetchone()[0]
-            
-            # متوسط التقدم
-            cursor.execute("SELECT AVG(completed_lessons) FROM users")
-            avg = cursor.fetchone()[0]
-            stats['average_progress'] = round(avg, 2) if avg else 0
-            
-            # توزيع اللغات
-            cursor.execute("""
-                SELECT language, COUNT(*) FROM users GROUP BY language
-            """)
-            stats['language_distribution'] = dict(cursor.fetchall())
-            
-            return stats
+DB_PATH = os.path.join(os.path.dirname(__file__), "noor_bot.db")
+
+TOTAL_LESSONS = 18
+FREE_LESSONS = 5
+# أيام الدراسة: الأحد=6 الاثنين=0 الثلاثاء=1 الأربعاء=2 الخميس=3 (Python weekday: الاثنين=0...الأحد=6)
+STUDY_WEEKDAYS = (6, 0, 1, 2, 3)   # الأحد, الاثنين, الثلاثاء, الأربعاء, الخميس
+OFF_WEEKDAYS = (4, 5)              # الجمعة, السبت
+
+
+@contextmanager
+def get_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def init_db():
+    with get_conn() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                language TEXT,
+                lesson_time TEXT,
+                current_lesson INTEGER DEFAULT 1,
+                completed_lessons INTEGER DEFAULT 0,
+                active INTEGER DEFAULT 1,
+                speaking_score REAL,
+                writing_score REAL,
+                certificate_status TEXT DEFAULT 'none',
+                certificate_id TEXT,
+                certificate_url TEXT,
+                certificate_date TEXT,
+                subscription_status TEXT DEFAULT 'trial',
+                subscription_date TEXT,
+                last_lesson_date TEXT,
+                timezone TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS lesson_progress (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                lesson_number INTEGER,
+                skill TEXT,
+                status TEXT DEFAULT 'in_progress',
+                started_at TEXT,
+                completed_at TEXT,
+                UNIQUE(user_id, lesson_number, skill)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS answers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                lesson_number INTEGER,
+                skill TEXT,
+                question_key TEXT,
+                selected_option TEXT,
+                is_correct INTEGER,
+                attempts INTEGER DEFAULT 1,
+                answered_at TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS completions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                lesson_number INTEGER,
+                lesson_title TEXT,
+                completed_at TEXT
+            )
+        """)
+        conn.commit()
+    logger.info("قاعدة البيانات جاهزة.")
+
+
+def _now():
+    return datetime.utcnow().isoformat()
+
+
+# ---------------------------------------------------------------------------
+# المستخدمون
+# ---------------------------------------------------------------------------
+
+def get_user(user_id: int):
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def create_user_if_missing(user_id: int, username: str = None, first_name: str = None):
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT OR IGNORE INTO users (user_id, username, first_name, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, username, first_name, _now(), _now()),
+        )
+        conn.commit()
+
+
+def update_user_fields(user_id: int, **fields):
+    """تحديث عام لأي أعمدة في users. مثال: update_user_fields(123, language='en')"""
+    if not fields:
+        return
+    fields["updated_at"] = _now()
+    columns = ", ".join(f"{k} = ?" for k in fields)
+    values = list(fields.values()) + [user_id]
+    with get_conn() as conn:
+        conn.execute(f"UPDATE users SET {columns} WHERE user_id = ?", values)
+        conn.commit()
+
+
+def set_language(user_id: int, language: str):
+    update_user_fields(user_id, language=language)
+
+
+def set_lesson_time(user_id: int, time_str: str):
+    update_user_fields(user_id, lesson_time=time_str)
+
+
+def get_all_scheduled_users():
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM users WHERE lesson_time IS NOT NULL AND active = 1"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def mark_lesson_started_today(user_id: int):
+    update_user_fields(user_id, last_lesson_date=_now())
+
+
+def advance_to_next_lesson(user_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE users
+               SET current_lesson = current_lesson + 1,
+                   completed_lessons = completed_lessons + 1,
+                   updated_at = ?
+               WHERE user_id = ?""",
+            (_now(), user_id),
+        )
+        conn.commit()
+
+
+def set_subscription_status(user_id: int, status: str):
+    """status: trial | active | expired | cancelled"""
+    update_user_fields(user_id, subscription_status=status, subscription_date=_now())
+
+
+def is_trial_active(user: dict) -> bool:
+    if user.get("subscription_status") == "active":
+        return True
+    return (user.get("completed_lessons") or 0) < FREE_LESSONS
+
+
+def program_finished(user: dict) -> bool:
+    return (user.get("completed_lessons") or 0) >= TOTAL_LESSONS
+
+
+# ---------------------------------------------------------------------------
+# تقدّم المهارات داخل الدرس
+# ---------------------------------------------------------------------------
+
+def start_skill(user_id: int, lesson_number: int, skill: str):
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT OR IGNORE INTO lesson_progress
+               (user_id, lesson_number, skill, status, started_at)
+               VALUES (?, ?, ?, 'in_progress', ?)""",
+            (user_id, lesson_number, skill, _now()),
+        )
+        conn.commit()
+
+
+def complete_skill(user_id: int, lesson_number: int, skill: str):
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO lesson_progress (user_id, lesson_number, skill, status, started_at, completed_at)
+               VALUES (?, ?, ?, 'completed', ?, ?)
+               ON CONFLICT(user_id, lesson_number, skill)
+               DO UPDATE SET status='completed', completed_at=excluded.completed_at""",
+            (user_id, lesson_number, skill, _now(), _now()),
+        )
+        conn.commit()
+
+
+def get_completed_skills(user_id: int, lesson_number: int) -> set:
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT skill FROM lesson_progress
+               WHERE user_id = ? AND lesson_number = ? AND status = 'completed'""",
+            (user_id, lesson_number),
+        ).fetchall()
+        return {r["skill"] for r in rows}
+
+
+def reset_lesson_progress(user_id: int, lesson_number: int):
+    """يمسح تقدّم مهارات درس معيّن، يُستخدم عند بدء الدرس من جديد."""
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM lesson_progress WHERE user_id = ? AND lesson_number = ?",
+            (user_id, lesson_number),
+        )
+        conn.execute(
+            "DELETE FROM answers WHERE user_id = ? AND lesson_number = ?",
+            (user_id, lesson_number),
+        )
+        conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# إجابات الاختيار من متعدد
+# ---------------------------------------------------------------------------
+
+def record_answer(user_id: int, lesson_number: int, skill: str, question_key: str,
+                   selected_option: str, is_correct: bool):
+    with get_conn() as conn:
+        existing = conn.execute(
+            """SELECT id, attempts FROM answers
+               WHERE user_id=? AND lesson_number=? AND skill=? AND question_key=?""",
+            (user_id, lesson_number, skill, question_key),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE answers SET selected_option=?, is_correct=?, attempts=attempts+1, answered_at=?
+                   WHERE id=?""",
+                (selected_option, int(is_correct), _now(), existing["id"]),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO answers
+                   (user_id, lesson_number, skill, question_key, selected_option, is_correct, attempts, answered_at)
+                   VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
+                (user_id, lesson_number, skill, question_key, selected_option, int(is_correct), _now()),
+            )
+        conn.commit()
+
+
+def is_question_answered_correctly(user_id: int, lesson_number: int, skill: str, question_key: str) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT is_correct FROM answers
+               WHERE user_id=? AND lesson_number=? AND skill=? AND question_key=?""",
+            (user_id, lesson_number, skill, question_key),
+        ).fetchone()
+        return bool(row and row["is_correct"])
+
+
+def all_questions_answered_correctly(user_id: int, lesson_number: int, skill: str, question_keys: list) -> bool:
+    return all(
+        is_question_answered_correctly(user_id, lesson_number, skill, qk)
+        for qk in question_keys
+    )
+
+
+# ---------------------------------------------------------------------------
+# إتمام الدروس
+# ---------------------------------------------------------------------------
+
+def log_completion(user_id: int, lesson_number: int, lesson_title: str):
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO completions (user_id, lesson_number, lesson_title, completed_at)
+               VALUES (?, ?, ?, ?)""",
+            (user_id, lesson_number, lesson_title, _now()),
+        )
+        conn.commit()
