@@ -23,6 +23,18 @@ from services import ai_service
 
 logger = logging.getLogger(__name__)
 
+def _bilingual(entry: dict, lang: str) -> str:
+    """يعرض النص بالعربية دائمًا، ويضيف ترجمة لغة الطالب أسفلها إن كانت لغته غير العربية.
+    entry: قاموس مثل {"ar": "...", "en": "...", "tr": "..."}"""
+    ar_text = entry.get("ar", "")
+    if lang == "ar" or lang not in entry:
+        return ar_text
+    other_text = entry.get(lang, "")
+    if not other_text or other_text == ar_text:
+        return ar_text
+    return f"{ar_text}\n{other_text}"
+
+
 SKILL_TITLE_KEY = {
     "intro": "skill_intro",
     "vocab": "skill_vocab",
@@ -152,14 +164,12 @@ async def _step_job(context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 
 async def _send_intro(context, user_id, step, title):
-    body = step["text"].get(_lang(user_id), step["text"].get("ar", "")) if False else None
-    # ملاحظة: النصوص التوجيهية تُترجم، لكن هنا نمرر lang من المستدعي أعلى، نعيد الحساب بسيطًا:
     user = db.get_user(user_id)
     lang = user.get("language", "ar")
-    body = step["text"].get(lang, step["text"].get("ar", ""))
-    question = step.get("motivational_question", {}).get(lang, "")
+    body = _bilingual(step["text"], lang)
     message = f"{title}\n\n{body}"
-    if question:
+    if step.get("motivational_question"):
+        question = _bilingual(step["motivational_question"], lang)
         message += f"\n\n💬 {question}"
 
     image = step.get("image")
@@ -167,6 +177,19 @@ async def _send_intro(context, user_id, step, title):
         await context.bot.send_photo(chat_id=user_id, photo=image, caption=message)
     else:
         await context.bot.send_message(chat_id=user_id, text=message)
+
+
+def _format_grammar_table(table_rows: list, lang: str) -> str:
+    """table_rows: [{"pronoun": "أنا", "meaning": {"en": "I", "tr": "Ben"}, "example": "أنا أحدثك"}, ...]"""
+    lines = []
+    for row in table_rows:
+        meaning = row.get("meaning", {}).get(lang, row.get("meaning", {}).get("en", ""))
+        line = f"• {row['pronoun']}"
+        if lang != "ar" and meaning:
+            line += f" ({meaning})"
+        line += f" — {row.get('example', '')}"
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def _lang(user_id):
@@ -196,9 +219,11 @@ async def _send_vocab(context, user_id, lang, lesson_number, step, title):
 
 
 async def _send_grammar(context, user_id, lang, lesson_number, step, title):
-    explanation = step["explanation"].get(lang, step["explanation"].get("ar", ""))
+    explanation = _bilingual(step["explanation"], lang)
     examples = "\n".join(step.get("examples", []))
-    message = f"{title}\n\n{explanation}\n\n📝 :\n{examples}"
+    message = f"{title}\n\n{explanation}\n\n📝 أمثلة:\n{examples}"
+    if step.get("table"):
+        message += "\n\n" + _format_grammar_table(step["table"], lang)
     await context.bot.send_message(chat_id=user_id, text=message)
 
     exercises = step.get("exercises", [])
@@ -245,7 +270,8 @@ async def _send_listening(context, user_id, lang, lesson_number, step, title):
 
 async def _send_ai_prompt(context, user_id, lang, step, title, note_key):
     questions = step.get("questions", [])
-    q_text = "\n".join(q.get(lang, q.get("ar", "")) for q in questions)
+    q_lines = [f"{i+1}. {_bilingual(q, lang)}" for i, q in enumerate(questions)]
+    q_text = "\n".join(q_lines)
     message = f"{title}\n\n{q_text}\n\n{t(note_key, lang)}"
     await context.bot.send_message(chat_id=user_id, text=message)
     # لا نُكمل المهارة هنا؛ تُكمَل عند وصول رد الطالب ونجاح تصحيح AI (انظر bot.py)
@@ -256,9 +282,21 @@ async def _send_exercises(context, user_id, lang, lesson_number, skill, exercise
         if exercise.get("type") != "multiple_choice":
             continue
         question_key = exercise.get("key", str(i))
-        question_text = exercise["question"].get(lang, exercise["question"].get("ar", ""))
-        keyboard = _build_choice_keyboard(lesson_number, skill, question_key, exercise["options"])
+        question_text = _bilingual(exercise["question"], lang)
+        options = _localized_options(exercise, lang)
+        keyboard = _build_choice_keyboard(lesson_number, skill, question_key, options)
         await context.bot.send_message(chat_id=user_id, text=f"❓ {question_text}", reply_markup=keyboard)
+
+
+def _localized_options(exercise: dict, lang: str) -> list:
+    """يدعم شكلين لـ options: قائمة نصوص جاهزة، أو قائمة قواميس {"ar": "...", "en": "...", "tr": "..."}
+    في الحالة الثانية يعرض الخيار بالعربية + لغة الطالب معًا."""
+    options = exercise["options"]
+    if not options:
+        return options
+    if isinstance(options[0], dict):
+        return [_bilingual(opt, lang).replace("\n", " / ") for opt in options]
+    return options
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +324,7 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     correct_index = exercise["correct_index"]
-    options = exercise["options"]
+    options = _localized_options(exercise, lang)
     is_correct = choice_index == correct_index
     selected_text = options[choice_index]
 
@@ -294,7 +332,7 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
 
     if is_correct:
         await query.edit_message_reply_markup(reply_markup=None)
-        explanation = exercise.get("explanation", {}).get(lang, "") if exercise.get("explanation") else ""
+        explanation = _bilingual(exercise["explanation"], lang) if exercise.get("explanation") else ""
         msg = t("correct_answer", lang)
         if explanation:
             msg += f"\n{explanation}"
@@ -306,7 +344,10 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
             db.complete_skill(user_id, lesson_number, skill)
     else:
         keyboard = _build_choice_keyboard(lesson_number, skill, question_key, options)
-        await query.edit_message_reply_markup(reply_markup=keyboard)
+        try:
+            await query.edit_message_reply_markup(reply_markup=keyboard)
+        except Exception:
+            pass  # نفس المحتوى (ضغطة على نفس الزر الخاطئ)؛ تجاهل خطأ "not modified"
         await query.message.reply_text(t("wrong_answer_retry", lang))
 
 
