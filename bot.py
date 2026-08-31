@@ -11,6 +11,8 @@ bot.py
 
 import os
 import logging
+import threading
+from flask import Flask
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -34,6 +36,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+# ---------------------------------------------------------------------------
+# خادم Flask مصغر لتلبية متطلبات منصة Render وتشغيل الخدمة مجاناً
+# ---------------------------------------------------------------------------
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def home():
+    return "Nuur Bot is running!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app_flask.run(host="0.0.0.0", port=port)
 
 
 # ---------------------------------------------------------------------------
@@ -227,6 +242,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("يجب تعيين TELEGRAM_BOT_TOKEN في متغيرات البيئة.")
+
+    # تشغيل خادم Flask في خلفية مستقلة لفتح المنفذ المطلوب لـ Render
+    threading.Thread(target=run_flask, daemon=True).start()
 
     db.init_db()
 
