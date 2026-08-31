@@ -13,6 +13,7 @@ lesson_engine.py
 """
 
 import logging
+import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -242,7 +243,14 @@ async def _send_reading(context, user_id, lang, lesson_number, step, title):
         await context.bot.send_message(chat_id=user_id, text=message)
 
     if step.get("audio"):
-        await context.bot.send_audio(chat_id=user_id, audio=step["audio"])
+        try:
+            response = requests.get(step["audio"])
+            if response.status_code == 200:
+                await context.bot.send_audio(chat_id=user_id, audio=response.content)
+            else:
+                await context.bot.send_audio(chat_id=user_id, audio=step["audio"])
+        except Exception:
+            await context.bot.send_audio(chat_id=user_id, audio=step["audio"])
 
     exercises = step.get("exercises", [])
     if exercises:
@@ -259,7 +267,14 @@ async def _send_listening(context, user_id, lang, lesson_number, step, title):
         await context.bot.send_message(chat_id=user_id, text=title)
 
     if step.get("audio"):
-        await context.bot.send_audio(chat_id=user_id, audio=step["audio"])
+        try:
+            response = requests.get(step["audio"])
+            if response.status_code == 200:
+                await context.bot.send_audio(chat_id=user_id, audio=response.content)
+            else:
+                await context.bot.send_audio(chat_id=user_id, audio=step["audio"])
+        except Exception:
+            await context.bot.send_audio(chat_id=user_id, audio=step["audio"])
 
     exercises = step.get("exercises", [])
     if exercises:
