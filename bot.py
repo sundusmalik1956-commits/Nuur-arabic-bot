@@ -193,16 +193,20 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
     active_skill = get_active_ai_skill(user_id)
     if active_skill is None:
+        await update.message.reply_text("⚠️ تنبيه: لا توجد مهارة محادثة نشطة حالياً لهذه الخطوة.")
         return
 
+    await update.message.reply_text("🎙️ جاري استماع وتحليل الصوت...")
+
     try:
-        voice_file = await context.bot.get_file(update.message.voice.file_id)
+        msg_file = update.message.voice or update.message.audio
+        voice_file = await context.bot.get_file(msg_file.file_id)
         audio_bytes = await voice_file.download_as_bytearray()
         await handle_ai_answer(context, user_id, active_skill, audio_bytes=bytes(audio_bytes))
-    except Exception:
+    except Exception as e:
         logger.exception("فشل تحميل الرسالة الصوتية")
         lang = user.get("language", "ar")
-        await update.message.reply_text(t("ai_correction_unavailable", lang))
+        await update.message.reply_text(f"خطأ تقني في تحميل الصوت: {e}")
         return
 
     await check_and_complete_if_ready(context, user_id)
@@ -260,7 +264,7 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_settings_choice, pattern=r"^settings\|"))
     app.add_handler(CallbackQueryHandler(handle_answer_callback_and_check, pattern=r"^ans\|"))
 
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
+    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
 
     app.add_error_handler(error_handler)
