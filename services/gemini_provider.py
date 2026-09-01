@@ -10,7 +10,6 @@ import os
 import re
 import json
 import logging
-import tempfile
 from google import genai
 
 logger = logging.getLogger(__name__)
@@ -90,32 +89,14 @@ Respond ONLY with valid JSON, no markdown fences:
   "explanation": "short encouraging feedback on pronunciation/grammar, in {lang_name}"
 }}
 """
-    audio_file_ref = None
-    tmp_path = None
     try:
-        # حفظ البايتات في ملف مؤقت بصيغة ogg المتوافقة مع تيليجرام
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".ogg") as tmp:
-            tmp.write(audio_bytes)
-            tmp_path = tmp.name
-
-        # رفع الملف بأمان لسيرفرات Gemini
-        audio_file_ref = client.files.upload(file=tmp_path)
-        
         response = client.models.generate_content(
             model=MODEL_NAME,
-            contents=[audio_file_ref, prompt]
+            contents=[
+                {"inline_data": {"mime_type": "audio/ogg", "data": audio_bytes}},
+                prompt,
+            ],
         )
-        
-        # تنظيف الملف من سيرفر Gemini بعد المعالجة
-        try:
-            client.files.delete(name=audio_file_ref.name)
-        except Exception:
-            pass
-
-        # تنظيف الملف المؤقت المحلي
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
         data = _parse_json_response(response.text)
         return AICorrectionResult(
             is_correct=bool(data.get("is_correct")),
@@ -124,16 +105,5 @@ Respond ONLY with valid JSON, no markdown fences:
             raw_response=response.text,
         )
     except Exception:
-        logger.exception("فشلت معالجة وتصحيح الملف الصوتي عبر Gemini")
-        # تنظيف في حالة حدوث خطأ طارئ
-        if audio_file_ref:
-            try:
-                client.files.delete(name=audio_file_ref.name)
-            except Exception:
-                pass
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
+        logger.exception("فشلت معالجة وتصحيح الملف الصوتي مباشرة عبر Gemini")
         return None
