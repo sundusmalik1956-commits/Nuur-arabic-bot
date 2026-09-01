@@ -78,7 +78,8 @@ def update_progress(user_id: int, current_lesson: int, completed_lessons: int):
     conn.commit()
     conn.close()
 
-def get_all_users_with_schedules():
+def get_all_scheduled_users():
+    """استرجاع جميع المستخدمين الذين لديهم أوقات دروس مجدولة."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT user_id, lesson_time FROM users WHERE lesson_time IS NOT NULL")
