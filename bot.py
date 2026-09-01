@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 bot.py
-نقطة التشغيل الرئيسية لـ "نور بوت". مسؤول فقط عن:
-    Telegram، المستخدمين، الإعدادات، الجدولة، التقدّم، الاشتراك، واستدعاء الدروس.
-لا يحتوي محتوى أي درس — كل درس في ملفه lessonN.py المستقل.
-
-التسلسل:
-    /start -> اختيار اللغة -> ترحيب -> اختيار وقت الدرس -> جدولة -> إرسال تلقائي يومي
+نقطة التشغيل الرئيسية لـ "نور بوت".
 """
 
 import os
@@ -21,7 +16,7 @@ from telegram.ext import (
 )
 
 import database as db
-from translations import t, language_keyboard_rows, SUPPORTED_LANGUAGES
+from translations import t, language_keyboard_rows
 from config import AVAILABLE_TIMES
 from scheduler import schedule_daily_lesson, restore_all_schedules, next_study_moment_is_today
 from lesson_engine import (
@@ -37,9 +32,6 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# ---------------------------------------------------------------------------
-# خادم Flask مصغر لتلبية متطلبات منصة Render وتشغيل الخدمة مجاناً
-# ---------------------------------------------------------------------------
 app_flask = Flask(__name__)
 
 @app_flask.route('/')
@@ -50,10 +42,6 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app_flask.run(host="0.0.0.0", port=port)
 
-
-# ---------------------------------------------------------------------------
-# /start
-# ---------------------------------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -114,10 +102,6 @@ async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await context.bot.send_message(chat_id=user_id, text=t("lesson_starting_next_study_day", lang))
 
 
-# ---------------------------------------------------------------------------
-# /progress
-# ---------------------------------------------------------------------------
-
 async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = db.get_user(user_id)
@@ -132,10 +116,6 @@ async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text)
 
-
-# ---------------------------------------------------------------------------
-# /settings
-# ---------------------------------------------------------------------------
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -167,10 +147,6 @@ async def handle_settings_choice(update: Update, context: ContextTypes.DEFAULT_T
         await _send_time_picker(context.bot, user_id, lang)
 
 
-# ---------------------------------------------------------------------------
-# استقبال ردود المحادثة (صوت) والكتابة (نص) لتصحيحها بالذكاء الاصطناعي
-# ---------------------------------------------------------------------------
-
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = db.get_user(user_id)
@@ -179,7 +155,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     active_skill = get_active_ai_skill(user_id)
     if active_skill is None:
-        return  # لا مهارة AI نشطة بانتظار رد؛ نتجاهل الرسالة بصمت
+        return
 
     await handle_ai_answer(context, user_id, active_skill, student_text=update.message.text)
     await check_and_complete_if_ready(context, user_id)
@@ -218,10 +194,6 @@ async def handle_answer_callback_and_check(update: Update, context: ContextTypes
     await check_and_complete_if_ready(context, user_id)
 
 
-# ---------------------------------------------------------------------------
-# اختبار يدوي (مفيد أثناء التطوير فقط)
-# ---------------------------------------------------------------------------
-
 async def force_lesson(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = db.get_user(user_id)
@@ -231,23 +203,14 @@ async def force_lesson(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_lesson(context.bot, user_id, user.get("language", "ar"), user["current_lesson"], context)
 
 
-# ---------------------------------------------------------------------------
-# معالج أخطاء عام
-# ---------------------------------------------------------------------------
-
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error("خطأ غير متوقع أثناء معالجة تحديث", exc_info=context.error)
 
-
-# ---------------------------------------------------------------------------
-# التشغيل
-# ---------------------------------------------------------------------------
 
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("يجب تعيين TELEGRAM_BOT_TOKEN في متغيرات البيئة.")
 
-    # تشغيل خادم Flask في خلفية مستقلة لفتح المنفذ المطلوب لـ Render
     threading.Thread(target=run_flask, daemon=True).start()
 
     db.init_db()
@@ -257,7 +220,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("progress", progress_command))
     app.add_handler(CommandHandler("settings", settings_command))
-    app.add_handler(CommandHandler("lesson", force_lesson))  # للاختبار فقط
+    app.add_handler(CommandHandler("lesson", force_lesson))
 
     app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
     app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
