@@ -11,6 +11,7 @@ import re
 import json
 import logging
 from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -90,12 +91,13 @@ Respond ONLY with valid JSON, no markdown fences:
 }}
 """
     try:
+        audio_part = types.Part.from_bytes(
+            data=audio_bytes,
+            mime_type="audio/ogg",
+        )
         response = client.models.generate_content(
             model=MODEL_NAME,
-            contents=[
-                {"inline_data": {"mime_type": "audio/ogg", "data": audio_bytes}},
-                prompt,
-            ],
+            contents=[audio_part, prompt],
         )
         data = _parse_json_response(response.text)
         return AICorrectionResult(
@@ -104,6 +106,6 @@ Respond ONLY with valid JSON, no markdown fences:
             explanation=data.get("explanation", ""),
             raw_response=response.text,
         )
-    except Exception:
-        logger.exception("فشلت معالجة وتصحيح الملف الصوتي مباشرة عبر Gemini")
+    except Exception as e:
+        logger.exception(f"فشلت معالجة وتصحيح الملف الصوتي عبر Gemini: {e}")
         return None
