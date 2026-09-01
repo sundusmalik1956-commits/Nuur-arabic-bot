@@ -5,7 +5,6 @@ database.py
 """
 
 import sqlite3
-import os
 
 DB_NAME = "bot_database.db"
 
@@ -18,7 +17,6 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # جدول المستخدمين مع إضافة حقل pending_skill لدعم الاستجابة غير المشروطة بوقت
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
