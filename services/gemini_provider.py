@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 services/gemini_provider.py
-التفاصيل التقنية الفعلية للاتصال بـ Google Gemini. لا يستدعيه أي ملف
-سوى services/ai_service.py — هذا هو المكان الوحيد الذي يُعدَّل عند تغيير
-مزوّد الذكاء الاصطناعي مستقبلًا.
+التفاصيل التقنية الفعلية للاتصال بـ Google Gemini وتصحيح النصوص والأصوات.
 """
 
 import os
@@ -20,7 +18,6 @@ MODEL_NAME = "gemini-2.0-flash"
 
 _client = None
 
-
 def _get_client():
     global _client
     if _client is None:
@@ -29,9 +26,7 @@ def _get_client():
         _client = genai.Client(api_key=GEMINI_API_KEY)
     return _client
 
-
 LANG_NAMES = {"ar": "Arabic", "en": "English", "tr": "Turkish"}
-
 
 def _build_prompt(student_text: str, prompt_context: str, student_lang: str) -> str:
     lang_name = LANG_NAMES.get(student_lang, "Arabic")
@@ -49,11 +44,9 @@ Return JSON with exactly these keys:
 }}
 """
 
-
 def _parse_json_response(raw_text: str) -> dict:
     cleaned = re.sub(r"^```json|```$", "", raw_text.strip(), flags=re.MULTILINE).strip()
     return json.loads(cleaned)
-
 
 def correct_writing(student_text: str, prompt_context: str, student_lang: str = "ar"):
     from .ai_service import AICorrectionResult
@@ -69,11 +62,8 @@ def correct_writing(student_text: str, prompt_context: str, student_lang: str = 
         raw_response=response.text,
     )
 
-
 def correct_speaking_text(student_text: str, prompt_context: str, student_lang: str = "ar"):
-    # نفس منطق تصحيح الكتابة عند استلام المحادثة كنص
     return correct_writing(student_text, prompt_context, student_lang)
-
 
 def correct_speaking_audio(audio_bytes: bytes, prompt_context: str, student_lang: str = "ar"):
     from .ai_service import AICorrectionResult
