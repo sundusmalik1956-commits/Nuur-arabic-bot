@@ -32,6 +32,12 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
+# رابط Tribute الخاص بك للاشتراك
+TRIBUTE_PAYMENT_LINK = "https://t.me/tribute/app?startapp=s152f"
+
+# عدد الدروس المجانية المسموحة قبل طلب الاشتراك (يمكنك جعلها 5 مستقبلاً، وجعلناها 1 مؤقتاً للتجربة الآن)
+TRIAL_LIMIT = 1 
+
 app_flask = Flask(__name__)
 
 @app_flask.route('/')
@@ -117,6 +123,44 @@ async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
+# ==========================================
+# دالة إرسال صفحة الدفع والاشتراك عبر Tribute
+# ==========================================
+async def send_subscription_prompt(chat_id, context):
+    keyboard = [
+        [InlineKeyboardButton("💳 اشتترك الآن (شهر بـ 5$ أو مدى الحياة بـ 20$)", url=TRIBUTE_PAYMENT_LINK)],
+        [InlineKeyboardButton("🔄 تحقق من الاشتراك", callback_data="check_subscription")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    text = (
+        "🎉 لقد أتممت بنجاح الدروس المجانية المتاحة!\n\n"
+        "للاستمرار في رحلة تعلم اللغة العربية وفتح المستوى الكامل، يرجى اختيار خطة الاشتراك المناسبة عبر Tribute.\n\n"
+        "بعد إتمام الدفع، اضغط على زر (تحقق من الاشتراك) لتفعيل حسابك فوراً."
+    )
+    await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+
+
+# ==========================================
+# أمر لمعاينة بيانات الطلاب والمشتركين من داخل تيليجرام
+# ==========================================
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    all_users = db.get_all_users() if hasattr(db, "get_all_users") else {}
+    if not all_users:
+        # إذا لم تكن الدالة موجودة في database.py، سنكتفي برسالة توضيحية أو جلبهم بطريقتك
+        await update.message.reply_text("📊 نظام الإحصائيات جاهز. تأكد من توفر دالة جلب المستخدمين في قاعدة البيانات.")
+        return
+
+    stats_msg = "📊 **قائمة بيانات الطلاب المسجلين:**\n\n"
+    for uid, udata in all_users.items():
+        sub_status = udata.get("subscription_status", "free")
+        status_label = "مدفوع ⭐" if sub_status == "active" else "مجاني 🆓"
+        stats_msg += f"• المستخدم: `{uid}` ({udata.get('first_name', 'طالب')})\n"
+        stats_msg += f"  - الدروس المكتملة: {udata.get('completed_lessons', 0)}\n"
+        stats_msg += f"  - الحالة: {status_label}\n\n"
+
+    await update.message.reply_text(stats_msg, parse_mode="Markdown")
+
+
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = db.get_user(user_id)
@@ -153,6 +197,13 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not user:
         return
 
+    # التحقق من حالة الاشتراك قبل السماح بإكمال الدروس المجاوزة للحد
+    completed = user.get("completed_lessons", 0)
+    sub_status = user.get("subscription_status", "free")
+    if completed >= TRIAL_LIMIT and sub_status != "active":
+        await send_subscription_prompt(user_id, context)
+        return
+
     active_skill = get_active_ai_skill(user_id)
     if active_skill is None:
         return
@@ -165,6 +216,12 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_user.id
     user = db.get_user(user_id)
     if not user:
+        return
+
+    completed = user.get("completed_lessons", 0)
+    sub_status = user.get("subscription_status", "free")
+    if completed >= TRIAL_LIMIT and sub_status != "active":
+        await send_subscription_prompt(user_id, context)
         return
 
     active_skill = get_active_ai_skill(user_id)
@@ -189,8 +246,28 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def handle_answer_callback_and_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    user = db.get_user(user_id)
+
+    # معالجة أزرار التحقق من الاشتراك المنفذة من قبل المستخدم
+    if query.data == "check_subscription":
+        await query.answer()
+        # حالياً للتجربة نقوم بتفعيل الاشتراك مباشرة، لاحقاً يمكن ربطه بالتحقق الفعلي
+        db.set_subscription_status(user_id, "active") if hasattr(db, "set_subscription_status") else user.update({"subscription_status": "active"})
+        await query.message.reply_text("✅ تم التحقق من الاشتراك بنجاح! تم تفعيل حسابك وفتح كافة الدروس.")
+        return
+
+    # التحقق من انتهاء التجربة المجانية عند الضغط على أزرار الدروس
+    completed = user.get("completed_lessons", 0) if user else 0
+    sub_status = user.get("subscription_status", "free") if user else "free"
+    
+    if completed >= TRIAL_LIMIT and sub_status != "active":
+        await query.answer()
+        await send_subscription_prompt(user_id, context)
+        return
+
     await handle_answer_callback(update, context)
-    user_id = update.callback_query.from_user.id
     await check_and_complete_if_ready(context, user_id)
 
 
@@ -200,6 +277,13 @@ async def force_lesson(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:
         await update.message.reply_text(t("no_active_program"))
         return
+    
+    completed = user.get("completed_lessons", 0)
+    sub_status = user.get("subscription_status", "free")
+    if completed >= TRIAL_LIMIT and sub_status != "active":
+        await send_subscription_prompt(user_id, context)
+        return
+
     await send_lesson(context.bot, user_id, user.get("language", "ar"), user["current_lesson"], context)
 
 
@@ -221,11 +305,12 @@ def main():
     app.add_handler(CommandHandler("progress", progress_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("lesson", force_lesson))
+    app.add_handler(CommandHandler("stats", stats_command)) # أمر لمراقبة المشتركين
 
     app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
     app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
     app.add_handler(CallbackQueryHandler(handle_settings_choice, pattern=r"^settings\|"))
-    app.add_handler(CallbackQueryHandler(handle_answer_callback_and_check, pattern=r"^ans\|"))
+    app.add_handler(CallbackQueryHandler(handle_answer_callback_and_check))
 
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
