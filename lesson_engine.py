@@ -2,18 +2,13 @@
 """
 lesson_engine.py
 المحرك المشترك الذي تستدعيه كل ملفات lessonN.py عبر واجهة موحّدة send_lesson().
-مسؤول عن:
-  - إرسال كل مهارة (تمهيد/مفردات/قواعد/قراءة/استماع/محادثة/كتابة) في وقتها عبر JobQueue
-    (بدون أي مهمة معلّقة تنتظر anyio.sleep طوال الدرس).
-  - بناء أزرار الاختيار من متعدد وتسجيل كل إجابة في قاعدة البيانات.
-  - عدم اعتبار الدرس مكتملًا إلا بعد تحقّق شروط إتمام كل مهاراته فعليًا.
-  - إعلان الإنجاز في قروب المناقشة بعد التحقق الفعلي فقط.
-
-هيكل بيانات الدرس المتوقع من كل lessonN.py (dict LESSON) موثّق في lesson_schema.py
 """
 
 import logging
 import requests
+import random
+import os
+import google.generativeai as genai
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -24,9 +19,16 @@ from services import ai_service
 
 logger = logging.getLogger(__name__)
 
+# قراءة المفاتيح الثلاثة من متغيرات البيئة في Render وتوزيعها تلقائياً
+# المفاتيح تكون مفصولة بفاصلة في المتغير
+_keys_env = os.getenv("GEMINI_API_KEYS", "")
+API_KEYS = [k.strip() for k in _keys_env.split(",") if k.strip()]
+
+if not API_KEYS:
+    # قيمة احتياطية في حال لم يتم ضبط المتغير بعد
+    API_KEYS = [""]
+
 def _bilingual(entry: dict, lang: str) -> str:
-    """يعرض النص بالعربية دائمًا، ويضيف ترجمة لغة الطالب أسفلها إن كانت لغته غير العربية.
-    entry: قاموس مثل {"ar": "...", "en": "...", "tr": "..."}"""
     ar_text = entry.get("ar", "")
     if lang == "ar" or lang not in entry:
         return ar_text
@@ -46,14 +48,11 @@ SKILL_TITLE_KEY = {
     "writing": "skill_writing",
 }
 
-# مهارات تُعتبر "مكتملة تلقائيًا" بمجرد قراءة المحتوى (لا تدريبات اختيارية فيها)
 CONTENT_ONLY_SKILLS = {"intro"}
-# مهارات تُصحَّح بواسطة AI ولا تحتوي على أزرار اختيار من متعدد
 AI_SKILLS = {"speaking", "writing"}
 
 
 async def send_lesson(bot, user_id: int, language: str, lesson_number: int, context: ContextTypes.DEFAULT_TYPE):
-    """نقطة الدخول الموحّدة: تبدأ درسًا لطالب (تُستدعى من الجدولة اليومية أو /lesson للاختبار)."""
     lesson = _load_lesson_module(lesson_number)
     if lesson is None:
         logger.warning(f"لا يوجد محتوى بعد للدرس رقم {lesson_number} (المستخدم {user_id}).")
@@ -124,26 +123,19 @@ async def _send_step_inner(context: ContextTypes.DEFAULT_TYPE, user_id: int, les
     if skill == "intro":
         await _send_intro(context, user_id, step, title)
         db.complete_skill(user_id, lesson_number, skill)
-
     elif skill == "vocab":
         await _send_vocab(context, user_id, lang, lesson_number, step, title)
-
     elif skill == "grammar":
         await _send_grammar(context, user_id, lang, lesson_number, step, title)
-
     elif skill == "reading":
         await _send_reading(context, user_id, lang, lesson_number, step, title)
-
     elif skill == "listening":
         await _send_listening(context, user_id, lang, lesson_number, step, title)
-
     elif skill == "speaking":
         await _send_ai_prompt(context, user_id, lang, step, title, "speaking_prompt_note")
-
     elif skill == "writing":
         await _send_ai_prompt(context, user_id, lang, step, title, "writing_prompt_note")
 
-    # جدولة الخطوة التالية (لا ننتظر هنا، JobQueue يتكفّل بالتوقيت)
     next_index = step_index + 1
     delay_seconds = steps[next_index].get("delay_minutes", 1) * 60 if next_index < len(steps) else 30
 
@@ -159,10 +151,6 @@ async def _step_job(context: ContextTypes.DEFAULT_TYPE):
     data = context.job.data
     await _send_step(context, data["user_id"], data["lesson_number"], data["step_index"])
 
-
-# ---------------------------------------------------------------------------
-# إرسال كل نوع مهارة
-# ---------------------------------------------------------------------------
 
 async def _send_intro(context, user_id, step, title):
     user = db.get_user(user_id)
@@ -181,7 +169,6 @@ async def _send_intro(context, user_id, step, title):
 
 
 def _format_grammar_table(table_rows: list, lang: str) -> str:
-    """table_rows: [{"pronoun": "أنا", "meaning": {"en": "I", "tr": "Ben"}, "example": "أنا أحدثك"}, ...]"""
     lines = []
     for row in table_rows:
         meaning = row.get("meaning", {}).get(lang, row.get("meaning", {}).get("en", ""))
@@ -191,11 +178,6 @@ def _format_grammar_table(table_rows: list, lang: str) -> str:
         line += f" — {row.get('example', '')}"
         lines.append(line)
     return "\n".join(lines)
-
-
-def _lang(user_id):
-    user = db.get_user(user_id)
-    return user.get("language", "ar") if user else "ar"
 
 
 async def _send_vocab(context, user_id, lang, lesson_number, step, title):
@@ -289,7 +271,6 @@ async def _send_ai_prompt(context, user_id, lang, step, title, note_key):
     q_text = "\n".join(q_lines)
     message = f"{title}\n\n{q_text}\n\n{t(note_key, lang)}"
     await context.bot.send_message(chat_id=user_id, text=message)
-    # لا نُكمل المهارة هنا؛ تُكمَل عند وصول رد الطالب ونجاح تصحيح AI (انظر bot.py)
 
 
 async def _send_exercises(context, user_id, lang, lesson_number, skill, exercises):
@@ -304,8 +285,6 @@ async def _send_exercises(context, user_id, lang, lesson_number, skill, exercise
 
 
 def _localized_options(exercise: dict, lang: str) -> list:
-    """يدعم شكلين لـ options: قائمة نصوص جاهزة، أو قائمة قواميس {"ar": "...", "en": "...", "tr": "..."}
-    في الحالة الثانية يعرض الخيار بالعربية + لغة الطالب معًا."""
     options = exercise["options"]
     if not options:
         return options
@@ -313,10 +292,6 @@ def _localized_options(exercise: dict, lang: str) -> list:
         return [_bilingual(opt, lang).replace("\n", " / ") for opt in options]
     return options
 
-
-# ---------------------------------------------------------------------------
-# معالجة إجابات الأزرار
-# ---------------------------------------------------------------------------
 
 async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -353,7 +328,6 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
             msg += f"\n{explanation}"
         await query.message.reply_text(msg)
 
-        # تحقق إن كانت كل أسئلة هذه المهارة أُجيبت بشكل صحيح -> اعتبرها مكتملة
         all_keys = _all_question_keys_for_skill(lesson, skill)
         if db.all_questions_answered_correctly(user_id, lesson_number, skill, all_keys):
             db.complete_skill(user_id, lesson_number, skill)
@@ -362,7 +336,7 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await query.edit_message_reply_markup(reply_markup=keyboard)
         except Exception:
-            pass  # نفس المحتوى (ضغطة على نفس الزر الخاطئ)؛ تجاهل خطأ "not modified"
+            pass  
         await query.message.reply_text(t("wrong_answer_retry", lang))
 
 
@@ -388,13 +362,11 @@ def _all_question_keys_for_skill(lesson, skill):
 
 
 # ---------------------------------------------------------------------------
-# استقبال إجابات المحادثة/الكتابة (نص أو صوت) وتصحيحها عبر AI
+# استقبال إجابات المحادثة/الكتابة وتصحيحها عبر AI مع تدوير المفاتيح الثلاثة
 # ---------------------------------------------------------------------------
 
 async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, skill: str,
                             student_text: str = None, audio_bytes: bytes = None):
-    """skill يجب أن تكون 'speaking' أو 'writing'. يُستدعى من bot.py عند استقبال رسالة/صوت من طالب
-    في حال كانت آخر مهارة نشطة له هي هذه."""
     user = db.get_user(user_id)
     if not user:
         return
@@ -413,17 +385,30 @@ async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, ski
     await context.bot.send_message(chat_id=user_id, text=t("ai_analyzing", lang))
 
     result = None
-    if audio_bytes is not None:
-        result = ai_service.correct_speaking_audio(audio_bytes, prompt_context, lang)
-    elif student_text is not None:
-        if skill == "writing":
-            result = ai_service.correct_writing(student_text, prompt_context, lang)
-        else:
-            result = ai_service.correct_speaking_text(student_text, prompt_context, lang)
+    
+    # محاولة الاستدعاء مع التبديل التلقائي بين المفاتيح الثلاثة في حال الضغط
+    for _ in range(len(API_KEYS)):
+        try:
+            current_key = random.choice(API_KEYS)
+            genai.configure(api_key=current_key)
+            
+            if audio_bytes is not None:
+                result = ai_service.correct_speaking_audio(audio_bytes, prompt_context, lang)
+            elif student_text is not None:
+                if skill == "writing":
+                    result = ai_service.correct_writing(student_text, prompt_context, lang)
+                else:
+                    result = ai_service.correct_speaking_text(student_text, prompt_context, lang)
+            
+            if result is not None:
+                break
+        
+        except Exception as e:
+            logger.warning(f"المفتاح واجه ضغطاً أو خطأ، جاري تجربة مفتاح آخر... الخطأ: {e}")
+            continue
 
     if result is None:
         await context.bot.send_message(chat_id=user_id, text=t("ai_correction_unavailable", lang))
-        # نعتبرها مكتملة رغم فشل AI حتى لا يعلق الطالب بلا داعٍ؛ يمكن تغييره لمراجعة يدوية لاحقًا
         db.complete_skill(user_id, lesson_number, skill)
         return
 
@@ -439,7 +424,6 @@ async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, ski
 
 
 def get_active_ai_skill(user_id: int):
-    """يُرجع 'speaking' أو 'writing' إن كانت هذه آخر مهارة بدأها الطالب ولم تكتمل بعد، وإلا None."""
     user = db.get_user(user_id)
     if not user:
         return None
@@ -457,10 +441,6 @@ def get_active_ai_skill(user_id: int):
     return None
 
 
-# ---------------------------------------------------------------------------
-# إتمام الدرس فعليًا + إعلان الإنجاز
-# ---------------------------------------------------------------------------
-
 def _lesson_fully_completed(user_id: int, lesson_number: int, lesson: dict) -> bool:
     required_skills = {step["skill"] for step in lesson["steps"]}
     completed = db.get_completed_skills(user_id, lesson_number)
@@ -470,15 +450,11 @@ def _lesson_fully_completed(user_id: int, lesson_number: int, lesson: dict) -> b
 async def _finalize_lesson(context: ContextTypes.DEFAULT_TYPE, user_id: int, lesson_number: int,
                             lesson: dict, lang: str):
     if not _lesson_fully_completed(user_id, lesson_number, lesson):
-        # لم تكتمل كل الشروط بعد (مثلاً AI لم يُصحّح بعد) — لا شيء يُفعل الآن.
-        # عندما تكتمل آخر مهارة (عبر handle_ai_answer أو handle_answer_callback)
-        # يُستدعى check_and_complete_if_ready من bot.py بعد كل حدث تفاعل.
         return
     await _complete_lesson_now(context, user_id, lesson_number, lesson, lang)
 
 
 async def check_and_complete_if_ready(context: ContextTypes.DEFAULT_TYPE, user_id: int):
-    """يُستدعى بعد كل إجابة (زر أو AI) للتحقق: هل اكتملت كل مهارات الدرس الحالي؟"""
     user = db.get_user(user_id)
     if not user:
         return
@@ -488,7 +464,6 @@ async def check_and_complete_if_ready(context: ContextTypes.DEFAULT_TYPE, user_i
         return
     lang = user.get("language", "ar")
     if _lesson_fully_completed(user_id, lesson_number, lesson):
-        # تجنّب التكرار: تحقق أنه لم يُسجَّل إتمامه من قبل
         already_done = _already_logged(user_id, lesson_number)
         if not already_done:
             await _complete_lesson_now(context, user_id, lesson_number, lesson, lang)
@@ -516,7 +491,7 @@ async def _complete_lesson_now(context: ContextTypes.DEFAULT_TYPE, user_id: int,
 
     user = db.get_user(user_id)
     if db.program_finished(user):
-        await context.bot.send_message(chat_id=user_id, text=t("program_complete", lang))
+        await context.bot.send_message(chat_id=user_id, text=t("program_complete, lang"))
 
 
 async def _announce_achievement(context: ContextTypes.DEFAULT_TYPE, user_id: int, lesson_number: int, lesson_title: str):
