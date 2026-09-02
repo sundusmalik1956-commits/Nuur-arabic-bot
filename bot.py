@@ -124,19 +124,31 @@ async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ==========================================
-# دالة إرسال صفحة الدفع والاشتراك عبر Tribute
+# دالة إرسال صفحة الدفع والاشتراك عبر Tribute بلغة الطالب
 # ==========================================
-async def send_subscription_prompt(chat_id, context):
+async def send_subscription_prompt(chat_id, context, lang="ar"):
+    btn_subscribe = "💳 Abonol (Aylık 5$ veya Ömür Boyu 20$)" if lang == "tr" else "💳 اشتترك الآن (شهر بـ 5$ أو مدى الحياة بـ 20$)"
+    btn_check = "🔄 Aboneliği Kontrol Et" if lang == "tr" else "🔄 تحقق من الاشتراك"
+    
     keyboard = [
-        [InlineKeyboardButton("💳 اشتترك الآن (شهر بـ 5$ أو مدى الحياة بـ 20$)", url=TRIBUTE_PAYMENT_LINK)],
-        [InlineKeyboardButton("🔄 تحقق من الاشتراك", callback_data="check_subscription")]
+        [InlineKeyboardButton(btn_subscribe, url=TRIBUTE_PAYMENT_LINK)],
+        [InlineKeyboardButton(btn_check, callback_data="check_subscription")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    text = (
-        "🎉 لقد أتممت بنجاح الدروس المجانية المتاحة!\n\n"
-        "للاستمرار في رحلة تعلم اللغة العربية وفتح المستوى الكامل، يرجى اختيار خطة الاشتراك المناسبة عبر Tribute.\n\n"
-        "بعد إتمام الدفع، اضغط على زر (تحقق من الاشتراك) لتفعيل حسابك فوراً."
-    )
+    
+    if lang == "tr":
+        text = (
+            "🎉 Ücretsiz dersleri başarıyla tamamladın!\n\n"
+            "Arapça öğrenme yolculuğuna devam etmek ve tam seviyenin kilidini açmak için lütfen Tribute üzerinden uygun abonelik planını seç.\n\n"
+            "Ödemeyi tamamladıktan sonra, hesabını hemen etkinleştirmek için (Aboneliği Kontrol Et) düğmesine bas."
+        )
+    else:
+        text = (
+            "🎉 لقد أتممت بنجاح الدروس المجانية المتاحة!\n\n"
+            "للاستمرار في رحلة تعلم اللغة العربية وفتح المستوى الكامل، يرجى اختيار خطة الاشتراك المناسبة عبر Tribute.\n\n"
+            "بعد إتمام الدفع، اضغط على زر (تحقق من الاشتراك) لتفعيل حسابك فوراً."
+        )
+        
     await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
 
@@ -146,15 +158,15 @@ async def send_subscription_prompt(chat_id, context):
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_users = db.get_all_users() if hasattr(db, "get_all_users") else {}
     if not all_users:
-        # إذا لم تكن الدالة موجودة في database.py، سنكتفي برسالة توضيحية أو جلبهم بطريقتك
-        await update.message.reply_text("📊 نظام الإحصائيات جاهز. تأكد من توفر دالة جلب المستخدمين في قاعدة البيانات.")
+        await update.message.reply_text("📊 نظام الإحصائيات جاهز، ولكن لا يوجد مستخدمين مسجلين بعد.")
         return
 
-    stats_msg = "📊 **قائمة بيانات الطلاب المسجلين:**\n\n"
+    stats_msg = f"📊 **قائمة بيانات الطلاب المسجلين (الإجمالي: {len(all_users)}):**\n\n"
     for uid, udata in all_users.items():
-        sub_status = udata.get("subscription_status", "free")
-        status_label = "مدفوع ⭐" if sub_status == "active" else "مجاني 🆓"
-        stats_msg += f"• المستخدم: `{uid}` ({udata.get('first_name', 'طالب')})\n"
+        sub_status = udata.get("subscription_status", "trial")
+        status_label = "مدفوع ⭐" if sub_status == "active" else "مجاني / تجريبي 🆓"
+        stats_msg += f"• الطالب: [{udata.get('first_name', 'طالب')}](tg://user?id={uid})\n"
+        stats_msg += f"  - اللغة: `{udata.get('language', 'ar')}`\n"
         stats_msg += f"  - الدروس المكتملة: {udata.get('completed_lessons', 0)}\n"
         stats_msg += f"  - الحالة: {status_label}\n\n"
 
@@ -197,11 +209,12 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not user:
         return
 
-    # التحقق من حالة الاشتراك قبل السماح بإكمال الدروس المجاوزة للحد
+    lang = user.get("language", "ar")
     completed = user.get("completed_lessons", 0)
-    sub_status = user.get("subscription_status", "free")
+    sub_status = user.get("subscription_status", "trial")
+    
     if completed >= TRIAL_LIMIT and sub_status != "active":
-        await send_subscription_prompt(user_id, context)
+        await send_subscription_prompt(user_id, context, lang)
         return
 
     active_skill = get_active_ai_skill(user_id)
@@ -218,10 +231,12 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if not user:
         return
 
+    lang = user.get("language", "ar")
     completed = user.get("completed_lessons", 0)
-    sub_status = user.get("subscription_status", "free")
+    sub_status = user.get("subscription_status", "trial")
+    
     if completed >= TRIAL_LIMIT and sub_status != "active":
-        await send_subscription_prompt(user_id, context)
+        await send_subscription_prompt(user_id, context, lang)
         return
 
     active_skill = get_active_ai_skill(user_id)
@@ -238,7 +253,6 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
         await handle_ai_answer(context, user_id, active_skill, audio_bytes=bytes(audio_bytes))
     except Exception as e:
         logger.exception("فشل تحميل الرسالة الصوتية")
-        lang = user.get("language", "ar")
         await update.message.reply_text(f"خطأ تقني في تحميل الصوت: {e}")
         return
 
@@ -249,22 +263,28 @@ async def handle_answer_callback_and_check(update: Update, context: ContextTypes
     query = update.callback_query
     user_id = query.from_user.id
     user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
 
-    # معالجة أزرار التحقق من الاشتراك المنفذة من قبل المستخدم
+    # معالجة أزرار التحقق من الاشتراك
     if query.data == "check_subscription":
         await query.answer()
-        # حالياً للتجربة نقوم بتفعيل الاشتراك مباشرة، لاحقاً يمكن ربطه بالتحقق الفعلي
-        db.set_subscription_status(user_id, "active") if hasattr(db, "set_subscription_status") else user.update({"subscription_status": "active"})
-        await query.message.reply_text("✅ تم التحقق من الاشتراك بنجاح! تم تفعيل حسابك وفتح كافة الدروس.")
+        # تفعيل تجريبي مؤقت عند الضغط للاختبار
+        db.set_subscription_status(user_id, "active")
+        
+        success_msg = (
+            "✅ Abonelik başarıyla doğrulandı! Hesabınız etkinleştirildi ve tüm derslerin kilidi açıldı."
+            if lang == "tr" else
+            "✅ تم التحقق من الاشتراك بنجاح! تم تفعيل حسابك وفتح كافة الدروس."
+        )
+        await query.message.reply_text(success_msg)
         return
 
-    # التحقق من انتهاء التجربة المجانية عند الضغط على أزرار الدروس
     completed = user.get("completed_lessons", 0) if user else 0
-    sub_status = user.get("subscription_status", "free") if user else "free"
+    sub_status = user.get("subscription_status", "trial") if user else "trial"
     
     if completed >= TRIAL_LIMIT and sub_status != "active":
         await query.answer()
-        await send_subscription_prompt(user_id, context)
+        await send_subscription_prompt(user_id, context, lang)
         return
 
     await handle_answer_callback(update, context)
@@ -278,13 +298,15 @@ async def force_lesson(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t("no_active_program"))
         return
     
+    lang = user.get("language", "ar")
     completed = user.get("completed_lessons", 0)
-    sub_status = user.get("subscription_status", "free")
+    sub_status = user.get("subscription_status", "trial")
+    
     if completed >= TRIAL_LIMIT and sub_status != "active":
-        await send_subscription_prompt(user_id, context)
+        await send_subscription_prompt(user_id, context, lang)
         return
 
-    await send_lesson(context.bot, user_id, user.get("language", "ar"), user["current_lesson"], context)
+    await send_lesson(context.bot, user_id, lang, user["current_lesson"], context)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
@@ -305,7 +327,7 @@ def main():
     app.add_handler(CommandHandler("progress", progress_command))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("lesson", force_lesson))
-    app.add_handler(CommandHandler("stats", stats_command)) # أمر لمراقبة المشتركين
+    app.add_handler(CommandHandler("stats", stats_command))
 
     app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
     app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
