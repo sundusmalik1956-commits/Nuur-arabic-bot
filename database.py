@@ -110,6 +110,13 @@ def get_user(user_id: int):
         return dict(row) if row else None
 
 
+def get_all_users():
+    """جلب جميع المستخدمين المسجلين لعرضهم في إحصائيات البوت (/stats)"""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM users").fetchall()
+        return {row["user_id"]: dict(row) for row in rows}
+
+
 def create_user_if_missing(user_id: int, username: str = None, first_name: str = None):
     with get_conn() as conn:
         conn.execute(
