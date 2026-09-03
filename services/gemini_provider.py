@@ -2,7 +2,7 @@
 """
 services/gemini_provider.py
 التفاصيل التقنية الفعلية للاتصال بـ Google Gemini وتصحيح النصوص والأصوات.
-تم تحديثه ليدعم نموذج gemini-3.6-flash المطلوب ودعم تدوير المفاتيح.
+تم تحديثه ليدعم نموذج gemini-3.6-flash مع تحسين معالجة استجابات الصوت والـ JSON.
 """
 
 import os
@@ -25,7 +25,6 @@ def _get_client():
     if not API_KEYS:
         raise RuntimeError("لا توجد مفاتيح Gemini معرَّفة في متغيرات البيئة (GEMINI_API_KEYS).")
     
-    # اختيار مفتاح عشوائي من المفاتيح المتاحة لتدوير الضغط
     chosen_key = random.choice(API_KEYS)
     return genai.Client(api_key=chosen_key)
 
@@ -48,8 +47,22 @@ Return JSON with exactly these keys:
 """
 
 def _parse_json_response(raw_text: str) -> dict:
-    cleaned = re.sub(r"^```json|```$", "", raw_text.strip(), flags=re.MULTILINE).strip()
-    return json.loads(cleaned)
+    """تنظيف واستخراج JSON بدقة من استجابة الذكاء الاصطناعي حتى لو احتوت على ترميز إضافي."""
+    if not raw_text:
+        raise ValueError("استجابة الذكاء الاصطناعي فارغة.")
+    
+    text = raw_text.strip()
+    # إزالة أقواس البيرد كود (Markdown fences) بكل أشكالها
+    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text)
+    text = text.strip()
+    
+    # محاولة العثور على أول قوس بداية وأخر قوس نهاية لـ JSON إن وجد نص إضافي
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        text = match.group(0)
+        
+    return json.loads(text)
 
 def correct_writing(student_text: str, prompt_context: str, student_lang: str = "ar"):
     from .ai_service import AICorrectionResult
