@@ -2,7 +2,7 @@
 """
 services/gemini_provider.py
 التفاصيل التقنية الفعلية للاتصال بـ Google Gemini وتصحيح النصوص والأصوات.
-تم تعديله ليدعم تدوير المفاتيح الثلاثة وتحديث اسم النموذج.
+تم تعديله ليستخدم نموذج gemini-2.0-flash المدعوم حالياً ودعم تدوير المفاتيح.
 """
 
 import os
@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 _keys_env = os.environ.get("GEMINI_API_KEYS", "") or os.environ.get("GEMINI_API_KEY", "")
 API_KEYS = [k.strip() for k in _keys_env.split(",") if k.strip()]
 
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-2.0-flash"
 
 def _get_client():
     if not API_KEYS:
         raise RuntimeError("لا توجد مفاتيح Gemini معرَّفة في متغيرات البيئة (GEMINI_API_KEYS).")
     
-    # اختيار مفتاح عشوائي من المفتاح الثلاثة المتاحة لتدوير الضغط
+    # اختيار مفتاح عشوائي من المفاتيح المتاحة لتدوير الضغط
     chosen_key = random.choice(API_KEYS)
     return genai.Client(api_key=chosen_key)
 
