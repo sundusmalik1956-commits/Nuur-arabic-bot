@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 _keys_env = os.environ.get("GEMINI_API_KEYS", "") or os.environ.get("GEMINI_API_KEY", "")
 API_KEYS = [k.strip() for k in _keys_env.split(",") if k.strip()]
 
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-1.5-flash"
 
 
 def _get_client():
