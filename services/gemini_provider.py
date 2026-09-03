@@ -2,7 +2,7 @@
 """
 services/gemini_provider.py
 التفاصيل التقنية الفعلية للاتصال بـ Google Gemini وتصحيح النصوص والأصوات.
-تم تعديله ليستخدم نموذج gemini-2.0-flash المدعوم حالياً ودعم تدوير المفاتيح.
+تم تحديثه ليدعم نموذج gemini-3.6-flash المطلوب ودعم تدوير المفاتيح.
 """
 
 import os
@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 _keys_env = os.environ.get("GEMINI_API_KEYS", "") or os.environ.get("GEMINI_API_KEY", "")
 API_KEYS = [k.strip() for k in _keys_env.split(",") if k.strip()]
 
-MODEL_NAME = "gemini-1.5-flash"
-
+MODEL_NAME = "gemini-3.6-flash"
 
 def _get_client():
     if not API_KEYS:
