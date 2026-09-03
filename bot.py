@@ -35,7 +35,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 # رابط Tribute الخاص بك للاشتراك
 TRIBUTE_PAYMENT_LINK = "https://t.me/tribute/app?startapp=s152f"
 
-# عدد الدروس المجانية المسموحة قبل طلب الاشتراك (يمكنك جعلها 5 مستقبلاً، وجعلناها 1 مؤقتاً للتجربة الآن)
+# عدد الدروس المجانية المسموحة قبل طلب الاشتراك
 TRIAL_LIMIT = 1 
 
 app_flask = Flask(__name__)
@@ -123,11 +123,8 @@ async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
-# ==========================================
-# دالة إرسال صفحة الدفع والاشتراك عبر Tribute بلغة الطالب
-# ==========================================
 async def send_subscription_prompt(chat_id, context, lang="ar"):
-    btn_subscribe = "💳 Abonol (Aylık 5$ veya Ömür Boyu 20$)" if lang == "tr" else "💳 اشتترك الآن (شهر بـ 5$ أو مدى الحياة بـ 20$)"
+    btn_subscribe = "💳 Abonol (Aylık 5$ أو Ömür Boyu 20$)" if lang == "tr" else "💳 اشتترك الآن (شهر بـ 5$ أو مدى الحياة بـ 20$)"
     btn_check = "🔄 Aboneliği Kontrol Et" if lang == "tr" else "🔄 تحقق من الاشتراك"
     
     keyboard = [
@@ -152,9 +149,6 @@ async def send_subscription_prompt(chat_id, context, lang="ar"):
     await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
 
-# ==========================================
-# أمر لمعاينة بيانات الطلاب والمشتركين من داخل تيليجرام
-# ==========================================
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_users = db.get_all_users() if hasattr(db, "get_all_users") else {}
     if not all_users:
@@ -219,6 +213,12 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     active_skill = get_active_ai_skill(user_id)
     if active_skill is None:
+        msg = (
+            "Lütfen şu anda serbest metin göndermeyin; aktif bir alıştırma veya ders adımı bekleniyor."
+            if lang == "tr" else
+            "⚠️ عذراً، لا يوجد تمرين كتابة نشط حالياً لاستقبال إجابتك. يرجى انتظار سؤال الدرس أو استخدام الأزرار المتاحة."
+        )
+        await update.message.reply_text(msg)
         return
 
     await handle_ai_answer(context, user_id, active_skill, student_text=update.message.text)
@@ -265,10 +265,8 @@ async def handle_answer_callback_and_check(update: Update, context: ContextTypes
     user = db.get_user(user_id)
     lang = user.get("language", "ar") if user else "ar"
 
-    # معالجة أزرار التحقق من الاشتراك
     if query.data == "check_subscription":
         await query.answer()
-        # تفعيل تجريبي مؤقت عند الضغط للاختبار
         db.set_subscription_status(user_id, "active")
         
         success_msg = (
