@@ -9,7 +9,6 @@ import logging
 import requests
 import random
 import os
-import google.generativeai as genai
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -19,13 +18,6 @@ from config import ACHIEVEMENT_GROUP_ID
 from services import ai_service
 
 logger = logging.getLogger(__name__)
-
-# قراءة المفاتيح الثلاثة من متغيرات البيئة في Render وتوزيعها تلقائياً
-_keys_env = os.getenv("GEMINI_API_KEYS", "")
-API_KEYS = [k.strip() for k in _keys_env.split(",") if k.strip()]
-
-if not API_KEYS:
-    API_KEYS = [""]
 
 def _bilingual(entry: dict, lang: str) -> str:
     ar_text = entry.get("ar", "")
@@ -123,7 +115,6 @@ async def _send_step_inner(context: ContextTypes.DEFAULT_TYPE, user_id: int, les
     if skill == "intro":
         await _send_intro(context, user_id, step, title)
         db.complete_skill(user_id, lesson_number, skill)
-        # الانتقال للخطوة التالية فورا لأن الـ intro لا يحتوي على تمرينات
         await _send_step(context, user_id, lesson_number, step_index + 1)
 
     elif skill == "vocab":
@@ -143,8 +134,6 @@ async def _send_step_inner(context: ContextTypes.DEFAULT_TYPE, user_id: int, les
 
     elif skill == "writing":
         await _send_ai_prompt(context, user_id, lang, step, title, "writing_prompt_note")
-
-    # تمت إزالة الـ job_queue تماماً ليتم الاعتماد كلياً على التفاعل وإتمام التمرينات
 
 
 async def _send_intro(context, user_id, step, title):
@@ -279,7 +268,6 @@ async def _send_exercises(context, user_id, lang, lesson_number, skill, exercise
         question_key = exercise.get("key", str(i))
         question_text = _bilingual(exercise["question"], lang)
         options = _localized_options(exercise, lang)
-        # نمرر رقم الخطوة (step_index) داخل الـ callback_data لنتمكن من الانتقال للخطوة التالية فوراً عند الاكتمال
         keyboard = _build_choice_keyboard_with_step(lesson_number, skill, question_key, options, step_index)
         await context.bot.send_message(chat_id=user_id, text=f"❓ {question_text}", reply_markup=keyboard)
 
@@ -314,7 +302,6 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
     lesson_number = int(lesson_number_str)
     choice_index = int(choice_index_str)
     
-    # استخراج رقم الخطوة إن وجد
     step_index = int(data_parts[5]) if len(data_parts) > 5 else 0
 
     lesson = _load_lesson_module(lesson_number)
@@ -343,7 +330,6 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
         all_keys = _all_question_keys_for_skill(lesson, skill)
         if db.all_questions_answered_correctly(user_id, lesson_number, skill, all_keys):
             db.complete_skill(user_id, lesson_number, skill)
-            # الانتقال الفوري للخطوة التالية بمجرد إنهاء جميع تمرينات المهارة بنجاح
             await _send_step(context, user_id, lesson_number, step_index + 1)
     else:
         keyboard = _build_choice_keyboard_with_step(lesson_number, skill, question_key, options, step_index)
@@ -402,27 +388,20 @@ async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, ski
 
     await context.bot.send_message(chat_id=user_id, text=t("ai_analyzing", lang))
 
-    result = None
-    
-    for _ in range(len(API_KEYS)):
-        try:
-            current_key = random.choice(API_KEYS)
-            genai.configure(api_key=current_key)
-            
-            if audio_bytes is not None:
-                result = ai_service.correct_speaking_audio(audio_bytes, prompt_context, lang)
-            elif student_text is not None:
-                if skill == "writing":
-                    result = ai_service.correct_writing(student_text, prompt_context, lang)
-                else:
-                    result = ai_service.correct_speaking_text(student_text, prompt_context, lang)
-            
-            if result is not None:
-                break
-        
-        except Exception as e:
-            logger.warning(f"المفتاح واجه ضغطاً أو خطأ، جاري تجربة مفتاح آخر... الخطأ: {e}")
-            continue
+    # الاعتماد بالكامل على طبقة ai_service الموحدة والمدمج فيها إدارة المفاتيح بلطف
+    try:
+        if audio_bytes is not None:
+            result = ai_service.correct_speaking_audio(audio_bytes, prompt_context, lang)
+        elif student_text is not None:
+            if skill == "writing":
+                result = ai_service.correct_writing(student_text, prompt_context, lang)
+            else:
+                result = ai_service.correct_speaking_text(student_text, prompt_context, lang)
+        else:
+            result = None
+    except Exception as e:
+        logger.exception(f"خطأ أثناء تصحيح الذكاء الاصطناعي: {e}")
+        result = None
 
     if result is None:
         await context.bot.send_message(chat_id=user_id, text=t("ai_correction_unavailable", lang))
@@ -439,7 +418,6 @@ async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, ski
         )
 
     db.complete_skill(user_id, lesson_number, skill)
-    # الانتقال الفوري للخطوة التالية بعد تصحيح الذكاء الاصطناعي
     await _send_step(context, user_id, lesson_number, step_index + 1)
 
 
