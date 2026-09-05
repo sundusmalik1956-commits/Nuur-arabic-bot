@@ -2,7 +2,7 @@
 """
 bot.py
 الملف الرئيسي لتشغيل بوت تيليجرام لإدارة رحلة تعلم اللغة العربية.
-يدعم اختيار المستويات (A0-B2)، اختبار تحديد المستوى، أيام الإجازة، وقروبات الدردشة.
+يدعم اختيار المستويات (A0-B2)، اختبار تحديد المستوى، أيام الإجازة بلغة الطالب، وقروبات الدردشة.
 """
 
 import logging
@@ -83,7 +83,8 @@ async def handle_gender_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = user.get("language", "ar") if user else "ar"
     
     gender = query.data.split("|")[1]
-    group_id = -1004491283200 if gender == "male" else -5548247537
+    # تعيين معرّف القروب بناءً على الجنس المختار
+    group_id = -5548247537 if gender == "female" else -1004491283200
         
     db.update_user_fields(user_id, gender=gender, group_id=group_id)
     
@@ -127,7 +128,7 @@ async def handle_level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     msg = f"✅ تم اختيار المستوى: {level}." if lang == "ar" else f"✅ Level selected: {level}."
     await query.edit_message_text(text=msg)
     
-    # الخطوة التالية: اختيار أيام الإجازة
+    # الخطوة التالية: اختيار أيام الإجازة بلغة الطالب
     await _send_rest_days_picker(context.bot, user_id, lang)
 
 
@@ -251,7 +252,11 @@ async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
     rest_days = updated_user.get("rest_days", "")
     
     group_id = updated_user.get("group_id")
-    chat_link = "https://t.me/+YourMenGroupInviteLink" if group_id == -1004491283200 else "https://t.me/+YourWomenGroupInviteLink"
+    # توجيه رابط الدعوة المناسب حسب القروب المحدد (نساء أو رجال)
+    if group_id == -5548247537:
+        chat_link = "https://t.me/+YourWomenGroupInviteLink"
+    else:
+        chat_link = "https://t.me/+YourMenGroupInviteLink"
 
     summary_text = t("registration_summary", lang).format(
         name=name,
