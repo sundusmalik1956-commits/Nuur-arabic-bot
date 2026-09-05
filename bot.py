@@ -73,8 +73,48 @@ async def handle_language_choice(update: Update, context: ContextTypes.DEFAULT_T
     await context.bot.send_message(chat_id=user_id, text=t("language_changed", lang))
 
     if not is_settings_change:
+        # 1. رسالة الترحيب
         await context.bot.send_message(chat_id=user_id, text=t("welcome", lang))
-        await context.bot.send_message(chat_id=user_id, text=t("trial_info", lang))
+        # 2. رسالة التعريف عن المستويات والدروس والاشتراك
+        await context.bot.send_message(chat_id=user_id, text=t("intro_levels_info", lang))
+        # 3. إرسال خيارات تحديد المستوى أو البدء من A0
+        await _send_level_selection(context.bot, user_id, lang)
+
+
+async def _send_level_selection(bot, user_id: int, lang: str):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(t("btn_take_placement_test", lang), callback_data="level|test")],
+        [
+            InlineKeyboardButton("A0", callback_data="level|A0"),
+            InlineKeyboardButton("A1", callback_data="level|A1"),
+            InlineKeyboardButton("A2", callback_data="level|A2"),
+        ],
+        [
+            InlineKeyboardButton("B1", callback_data="level|B1"),
+            InlineKeyboardButton("B2", callback_data="level|B2"),
+        ]
+    ])
+    await bot.send_message(chat_id=user_id, text=t("ask_level_selection", lang), reply_markup=keyboard)
+
+
+async def handle_level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
+
+    choice = query.data.split("|")[1]
+    await query.edit_message_reply_markup(reply_markup=None)
+
+    if choice == "test":
+        await context.bot.send_message(chat_id=user_id, text=t("placement_test_intro", lang))
+        # هنا يمكنك توجيه الطالب لاحقاً لبدء اختبار تحديد المستوى
+    else:
+        # حفظ المستوى المختار (A0, A1, A2, B1, B2)
+        db.set_user_level(user_id, choice) if hasattr(db, "set_user_level") else None
+        await context.bot.send_message(chat_id=user_id, text=t("level_chosen", lang, level=choice))
+        # الانتقال لاختيار وقت الدراسة اليومي
         await _send_time_picker(context.bot, user_id, lang)
 
 
@@ -132,8 +172,6 @@ async def send_subscription_prompt(chat_id, context, lang="ar"):
         [InlineKeyboardButton(btn_check, callback_data="check_subscription")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    # استخدام النص الجديد المطلوب بدقة بناءً على ترجمات translations.py
     text = t("paywall_tribute", lang)
     await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
@@ -157,13 +195,12 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def download_excel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """أمر لإرسال ملف الإكسل الخاص بالطلاب للمشرف"""
     excel_path = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
     if os.path.exists(excel_path):
         with open(excel_path, "rb") as f:
             await update.message.reply_document(document=InputFile(f, filename="students_data.xlsx"), caption="📊 ملف بيانات الطلاب المحدث.")
     else:
-        await update.message.reply_text("⚠️ ملف بيانات الطلاب غير موجود بعد (لم يتم تسحيل أي طالب حتى الآن).")
+        await update.message.reply_text("⚠️ ملف بيانات الطلاب غير موجود بعد.")
 
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -267,7 +304,6 @@ async def handle_answer_callback_and_check(update: Update, context: ContextTypes
     if query.data == "check_subscription":
         await query.answer()
         db.set_subscription_status(user_id, "active")
-        
         success_msg = (
             "✅ Abonelik başarıyla doğrulandı! Hesabınız etkinleştirildi ve tüm derslerin kilidi açıldı."
             if lang == "tr" else
@@ -325,9 +361,10 @@ def main():
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("lesson", force_lesson))
     app.add_handler(CommandHandler("stats", stats_command))
-    app.add_handler(CommandHandler("excel", download_excel_command))  # أمر جديد لتحميل ملف الإكسل مباشرة
+    app.add_handler(CommandHandler("excel", download_excel_command))
 
     app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
+    app.add_handler(CallbackQueryHandler(handle_level_choice, pattern=r"^level\|"))
     app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
     app.add_handler(CallbackQueryHandler(handle_settings_choice, pattern=r"^settings\|"))
     app.add_handler(CallbackQueryHandler(handle_answer_callback_and_check))
