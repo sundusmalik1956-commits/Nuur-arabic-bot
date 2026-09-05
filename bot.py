@@ -1,164 +1,88 @@
 # -*- coding: utf-8 -*-
 """
 bot.py
-نقطة التشغيل الرئيسية لـ "نور بوت" مع دعم اختيار وقت الدرس، أيام الإجازة، الجنس، وعرض الملخص.
+الملف الرئيسي لتشغيل بوت تيليجرام لإدارة رحلة تعلم اللغة العربية.
+يدعم تعدد اللغات، واختيار أيام الإجازة المخصصة، وتخزين البيانات.
 """
 
-import os
 import logging
-import threading
-from flask import Flask
-
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
+import os
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler, MessageHandler,
-    ContextTypes, filters,
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
 )
 
 import database as db
-from translations import t, language_keyboard_rows
-from config import AVAILABLE_TIMES
-from scheduler import schedule_daily_lesson, restore_all_schedules, next_study_moment_is_today
-from lesson_engine import (
-    handle_answer_callback, handle_ai_answer, get_active_ai_skill,
-    check_and_complete_if_ready, send_lesson,
-)
+import config
+from scheduler import schedule_daily_lesson, restore_all_schedules, remove_daily_lesson
+from translations import t, language_codes, language_keyboard_rows, get_days_list
 
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-TRIBUTE_PAYMENT_LINK = "https://t.me/tribute/app?startapp=s152f"
-TRIAL_LIMIT = 5 
 
-# روابط مجموعات الدردشة
-GROUP_MALE = "https://t.me/rijalnurakademik"
-GROUP_FEMALE = "https://t.me/nisanurakademik"
-
-app_flask = Flask(__name__)
-
-@app_flask.route('/')
-def home():
-    return "Nuur Bot is running!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app_flask.run(host="0.0.0.0", port=port)
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    db.create_user_if_missing(user.id, username=user.username, first_name=user.first_name)
-
-    rows = language_keyboard_rows()
-    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data=cb)] for label, cb in rows])
-    await update.message.reply_text(t("choose_language"), reply_markup=keyboard)
+    db.create_user_if_missing(user.id, user.username, user.first_name)
+    
+    # رسالة ترحيبية واختيار اللغة
+    keyboard = InlineKeyboardMarkup(language_keyboard_rows())
+    welcome_text = (
+        "مرحباً بك في أكاديمية نور لتعليم اللغة العربية!\n"
+        "Welcome to Nour Arabic Academy!\n\n"
+        "الرجاء اختيار لغتك المفضلة / Please select your preferred language:"
+    )
+    await update.message.reply_text(welcome_text, reply_markup=keyboard)
 
 
 async def handle_language_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
-    user_id = query.from_user.id
-    lang = query.data.split("|")[1]
-    db.set_language(user_id, lang)
-    await query.edit_message_reply_markup(reply_markup=None)
-
-    user = db.get_user(user_id)
-    is_settings_change = user.get("lesson_time") is not None
-
-    await context.bot.send_message(chat_id=user_id, text=t("language_changed", lang))
-
-    if not is_settings_change:
-        await context.bot.send_message(chat_id=user_id, text=t("welcome", lang))
-        await context.bot.send_message(chat_id=user_id, text=t("intro_levels_info", lang))
-        await _send_level_selection(context.bot, user_id, lang)
-
-
-async def _send_level_selection(bot, user_id: int, lang: str):
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t("btn_take_placement_test", lang), url="https://t.me/Nurarabictestbot")],
-        [
-            InlineKeyboardButton("A0", callback_data="level|A0"),
-            InlineKeyboardButton("A1", callback_data="level|A1"),
-            InlineKeyboardButton("A2", callback_data="level|A2"),
-        ],
-        [
-            InlineKeyboardButton("B1", callback_data="level|B1"),
-            InlineKeyboardButton("B2", callback_data="level|B2"),
-        ]
-    ])
-    await bot.send_message(chat_id=user_id, text=t("ask_level_selection", lang), reply_markup=keyboard)
-
-
-async def handle_level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user_id = query.from_user.id
-    user = db.get_user(user_id)
-    lang = user.get("language", "ar") if user else "ar"
-
-    choice = query.data.split("|")[1]
-    await query.edit_message_reply_markup(reply_markup=None)
-
-    if hasattr(db, "set_user_level"):
-        db.set_user_level(user_id, choice)
-        
-    await context.bot.send_message(chat_id=user_id, text=t("level_chosen", lang, level=choice))
-    await _send_time_picker(context.bot, user_id, lang)
-
-
-async def _send_time_picker(bot, user_id: int, lang: str):
-    buttons = [InlineKeyboardButton(time_str, callback_data=f"time|{time_str}") for time_str in AVAILABLE_TIMES]
-    rows = [buttons[i:i + 3] for i in range(0, len(buttons), 3)]
-    keyboard = InlineKeyboardMarkup(rows)
-    await bot.send_message(chat_id=user_id, text=t("ask_time", lang), reply_markup=keyboard)
-
-
-async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    user_id = query.from_user.id
-    time_str = query.data.split("|")[1]
-    db.set_lesson_time(user_id, time_str)
-
-    await query.edit_message_reply_markup(reply_markup=None)
-    user = db.get_user(user_id)
-    lang = user.get("language", "ar") if user else "ar"
     
-    await context.bot.send_message(chat_id=user_id, text=t("time_confirmed", lang, time=time_str))
+    data = query.data
+    if not data.startswith("lang|"):
+        return
+        
+    lang_code = data.split("|")[1]
+    if lang_code not in language_codes:
+        return
+        
+    user_id = query.from_user.id
+    db.set_language(user_id, lang_code)
     
     # الانتقال لخطوة اختيار أيام الإجازة
-    await _send_rest_days_picker(context.bot, user_id, lang, selected=[])
+    await query.edit_message_text(text=t("language_saved", lang_code))
+    await _send_rest_days_picker(context.bot, user_id, lang_code)
 
 
 async def _send_rest_days_picker(bot, user_id: int, lang: str, selected=None):
     if selected is None:
         selected = []
-    
-    days = [
-        ("الأحد / Sunday", "Sun"),
-        ("الإثنين / Monday", "Mon"),
-        ("الثلاثاء / Tuesday", "Tue"),
-        ("الأربعاء / Wednesday", "Wed"),
-        ("الخميس / Thursday", "Thu"),
-        ("الجمعة / Friday", "Fri"),
-        ("السبت / Saturday", "Sat"),
-    ]
+        
+    localized_days = get_days_list(lang)
+    codes = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
     keyboard_rows = []
-    for label, code in days:
+    for code, label in zip(codes, localized_days):
         check = "✅ " if code in selected else "⬜ "
         keyboard_rows.append([InlineKeyboardButton(check + label, callback_data=f"rest|toggle|{code}")])
-    
+        
     keyboard_rows.append([InlineKeyboardButton(t("btn_save_rest_days", lang), callback_data="rest|save")])
     keyboard = InlineKeyboardMarkup(keyboard_rows)
     
-    await bot.send_message(chat_id=user_id, text=t("ask_rest_days", lang), reply_markup=keyboard)
+    msg_text = (
+        "الرجاء اختيار يومي إجازة في الأسبوع بدون دروس:" 
+        if lang == "ar" 
+        else "Please choose your 2 rest days per week:"
+    )
+    await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard)
 
 
 async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -185,20 +109,19 @@ async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_
             if len(selected) < 2:
                 selected.append(code)
             else:
-                await query.answer("يمكنك اختيار يومي إجازة فقط كحد أقصى.", show_alert=True)
+                alert_text = (
+                    "يمكنك اختيار يومي إجازة فقط كحد أقصى." 
+                    if lang == "ar" 
+                    else "You can select a maximum of 2 rest days."
+                )
+                await query.answer(alert_text, show_alert=True)
                 return
                 
-        days = [
-            ("الأحد / Sunday", "Sun"),
-            ("الإثنين / Monday", "Mon"),
-            ("الثلاثاء / Tuesday", "Tue"),
-            ("الأربعاء / Wednesday", "Wed"),
-            ("الخميس / Thursday", "Thu"),
-            ("الجمعة / Friday", "Fri"),
-            ("السبت / Saturday", "Sat"),
-        ]
+        localized_days = get_days_list(lang)
+        codes = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        
         keyboard_rows = []
-        for label, code_item in days:
+        for code_item, label in zip(codes, localized_days):
             check = "✅ " if code_item in selected else "⬜ "
             keyboard_rows.append([InlineKeyboardButton(check + label, callback_data=f"rest|toggle|{code_item}")])
         keyboard_rows.append([InlineKeyboardButton(t("btn_save_rest_days", lang), callback_data="rest|save")])
@@ -210,22 +133,28 @@ async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_
             
     elif action == "save":
         if len(selected) != 2:
-            await query.answer("الرجاء اختيار يومي إجازة بالضبط.", show_alert=True)
+            alert_text = (
+                "الرجاء اختيار يومي إجازة بالضبط." 
+                if lang == "ar" 
+                else "Please select exactly 2 rest days."
+            )
+            await query.answer(alert_text, show_alert=True)
             return
             
-        context.user_data["saved_rest_days"] = selected
-        await query.edit_message_reply_markup(reply_markup=None)
+        rest_days_str = ",".join(selected)
+        db.update_user_fields(user_id, rest_days=rest_days_str)
         
-        # الانتقال لخطوة اختيار الجنس
+        await query.edit_message_text(text=t("rest_days_saved", lang))
         await _send_gender_picker(context.bot, user_id, lang)
 
 
 async def _send_gender_picker(bot, user_id: int, lang: str):
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t("btn_male", lang), callback_data="gender|male")],
-        [InlineKeyboardButton(t("btn_female", lang), callback_data="gender|female")]
+        [InlineKeyboardButton(t("gender_male", lang), callback_data="gender|male")],
+        [InlineKeyboardButton(t("gender_female", lang), callback_data="gender|female")]
     ])
-    await bot.send_message(chat_id=user_id, text=t("ask_gender", lang), reply_markup=keyboard)
+    msg_text = "الرجاء اختيار الجنس لتحديد مجموعة المناقشة المناسبة:" if lang == "ar" else "Please select your gender:"
+    await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard)
 
 
 async def handle_gender_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -237,267 +166,69 @@ async def handle_gender_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = user.get("language", "ar") if user else "ar"
     
     gender = query.data.split("|")[1]
-    await query.edit_message_reply_markup(reply_markup=None)
+    group_id = config.MEN_GROUP_ID if gender == "male" else config.WOMEN_GROUP_ID
     
-    # تحديد رابط المجموعة بناءً على الجنس
-    chat_link = GROUP_MALE if gender == "male" else GROUP_FEMALE
-    context.user_data["saved_gender"] = gender
-    context.user_data["chat_link"] = chat_link
-    
-    # استخراج البيانات الكاملة لعرض الملخص
-    name = user.get("first_name", "طالب")
-    level = user.get("current_level", "A1") # أو المستوى المحفوظ
-    time_str = user.get("lesson_time", "12:00")
-    rest_days = ", ".join(context.user_data.get("saved_rest_days", ["Sun", "Sat"]))
-    
-    summary_text = t(
-        "registration_summary", lang,
-        name=name,
-        level=level,
-        time=time_str,
-        rest_days=rest_days,
-        chat_link=chat_link
-    )
-    
-    await context.bot.send_message(chat_id=user_id, text=summary_text, parse_mode="Markdown", disable_web_page_preview=True)
-    
-    # جدولة الدرس الأول
-    hour, minute = map(int, time_str.split(":"))
-    schedule_daily_lesson(context.job_queue, user_id, hour, minute)
+    db.update_user_fields(user_id, gender=gender, group_id=group_id)
+    await query.edit_message_text(text="تم حفظ بياناتك بنجاح! الآن اختر وقت استلام الدرس اليومي:")
+    await _send_time_picker(context.bot, user_id, lang)
 
 
-async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user = db.get_user(user_id)
-    if not user:
-        await update.message.reply_text(t("no_active_program"))
-        return
-    lang = user.get("language", "ar")
-    text = f"{t('progress_title', lang)}\n\n" + t(
-        "progress_body", lang,
-        completed=user.get("completed_lessons", 0),
-        current=user.get("current_lesson", 1),
-    )
-    await update.message.reply_text(text)
+async def _send_time_picker(bot, user_id: int, lang: str):
+    keyboard_rows = []
+    row = []
+    for time_str in config.AVAILABLE_TIMES:
+        row.append(InlineKeyboardButton(time_str, callback_data=f"time|{time_str}"))
+        if len(row) == 3:
+            keyboard_rows.append(row)
+            row = []
+    if row:
+        keyboard_rows.append(row)
+        
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+    await bot.send_message(chat_id=user_id, text=t("choose_time", lang), reply_markup=keyboard)
 
 
-async def send_subscription_prompt(chat_id, context, lang="ar"):
-    btn_subscribe = "💳 اشترك عبر Tribute" if lang != "tr" else "💳 Tribute ile Abone Ol"
-    btn_check = "🔄 تحقق من الاشتراك" if lang != "tr" else "🔄 Aboneliği Kontrol Et"
-    
-    keyboard = [
-        [InlineKeyboardButton(btn_subscribe, url=TRIBUTE_PAYMENT_LINK)],
-        [InlineKeyboardButton(btn_check, callback_data="check_subscription")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    text = t("paywall_tribute", lang)
-    await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
-
-
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    all_users = db.get_all_users() if hasattr(db, "get_all_users") else {}
-    if not all_users:
-        await update.message.reply_text("📊 نظام الإحصائيات جاهز، ولكن لا يوجد مستخدمين مسجلين بعد.")
-        return
-
-    stats_msg = f"📊 **قائمة بيانات الطلاب المسجلين (الإجمالي: {len(all_users)}):**\n\n"
-    for uid, udata in all_users.items():
-        sub_status = udata.get("subscription_status", "trial")
-        status_label = "مدفوع ⭐" if sub_status == "active" else "مجاني / تجريبي 🆓"
-        stats_msg += f"• الطالب: [{udata.get('first_name', 'طالب')}](tg://user?id={uid})\n"
-        stats_msg += f"  - اللغة: `{udata.get('language', 'ar')}`\n"
-        stats_msg += f"  - الدروس المكتملة: {udata.get('completed_lessons', 0)}\n"
-        stats_msg += f"  - الحالة: {status_label}\n\n"
-
-    await update.message.reply_text(stats_msg, parse_mode="Markdown")
-
-
-async def download_excel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    excel_path = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
-    if os.path.exists(excel_path):
-        with open(excel_path, "rb") as f:
-            await update.message.reply_document(document=InputFile(f, filename="students_data.xlsx"), caption="📊 ملف بيانات الطلاب المحدث.")
-    else:
-        await update.message.reply_text("⚠️ ملف بيانات الطلاب غير موجود بعد.")
-
-
-async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user = db.get_user(user_id)
-    lang = user.get("language", "ar") if user else "ar"
-
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t("settings_change_language", lang), callback_data="settings|lang")],
-        [InlineKeyboardButton(t("settings_change_time", lang), callback_data="settings|time")],
-    ])
-    await update.message.reply_text(t("settings_title", lang), reply_markup=keyboard)
-
-
-async def handle_settings_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
     user_id = query.from_user.id
     user = db.get_user(user_id)
     lang = user.get("language", "ar") if user else "ar"
-
-    choice = query.data.split("|")[1]
-    await query.edit_message_reply_markup(reply_markup=None)
-
-    if choice == "lang":
-        rows = language_keyboard_rows()
-        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data=cb)] for label, cb in rows])
-        await context.bot.send_message(chat_id=user_id, text=t("choose_language", lang), reply_markup=keyboard)
-    elif choice == "time":
-        await _send_time_picker(context.bot, user_id, lang)
-
-
-async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user = db.get_user(user_id)
-    if not user:
-        return
-
-    lang = user.get("language", "ar")
-    completed = user.get("completed_lessons", 0)
-    sub_status = user.get("subscription_status", "trial")
     
-    if completed >= TRIAL_LIMIT and sub_status != "active":
-        await send_subscription_prompt(user_id, context, lang)
-        return
-
-    active_skill = get_active_ai_skill(user_id)
-    if active_skill is None:
-        msg = (
-            "Lütfen şu anda serbest metin göndermeyin; aktif bir alıştırma veya ders adımı bekleniyor."
-            if lang == "tr" else
-            "⚠️ عذراً، لا يوجد تمرين كتابة نشط حالياً لاستقبال إجابتك. يرجى انتظار سؤال الدرس أو استخدام الأزرار المتاحة."
-        )
-        await update.message.reply_text(msg)
-        return
-
-    await handle_ai_answer(context, user_id, active_skill, student_text=update.message.text)
-    await check_and_complete_if_ready(context, user_id)
-
-
-async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user = db.get_user(user_id)
-    if not user:
-        return
-
-    lang = user.get("language", "ar")
-    completed = user.get("completed_lessons", 0)
-    sub_status = user.get("subscription_status", "trial")
+    time_str = query.data.split("|")[1]
+    db.set_lesson_time(user_id, time_str)
     
-    if completed >= TRIAL_LIMIT and sub_status != "active":
-        await send_subscription_prompt(user_id, context, lang)
-        return
-
-    active_skill = get_active_ai_skill(user_id)
-    if active_skill is None:
-        await update.message.reply_text("⚠️ تنبيه: لا توجد مهارة محادثة نشطة حالياً لهذه الخطوة.")
-        return
-
-    await update.message.reply_text("🎙️ جاري استماع وتحليل الصوت...")
-
     try:
-        msg_file = update.message.voice or update.message.audio
-        voice_file = await context.bot.get_file(msg_file.file_id)
-        audio_bytes = await voice_file.download_as_bytearray()
-        await handle_ai_answer(context, user_id, active_skill, audio_bytes=bytes(audio_bytes))
+        hour, minute = map(int, time_str.split(":"))
+        schedule_daily_lesson(context.job_queue, user_id, hour, minute)
     except Exception as e:
-        logger.exception("فشل تحميل الرسالة الصوتية")
-        await update.message.reply_text(f"خطأ تقني في تحميل الصوت: {e}")
-        return
-
-    await check_and_complete_if_ready(context, user_id)
-
-
-async def handle_answer_callback_and_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
-    user = db.get_user(user_id)
-    lang = user.get("language", "ar") if user else "ar"
-
-    if query.data == "check_subscription":
-        await query.answer()
-        db.set_subscription_status(user_id, "active")
-        success_msg = (
-            "✅ Abonelik başarıyla doğrulandı! Hesabınız etkinleştirildi ve tüm derslerin kilidi açıldı."
-            if lang == "tr" else
-            "✅ تم التحقق من الاشتراك بنجاح! تم تفعيل حسابك وفتح كافة الدروس."
-        )
-        await query.message.reply_text(success_msg)
-        return
-
-    completed = user.get("completed_lessons", 0) if user else 0
-    sub_status = user.get("subscription_status", "trial") if user else "trial"
-    
-    if completed >= TRIAL_LIMIT and sub_status != "active":
-        await query.answer()
-        await send_subscription_prompt(user_id, context, lang)
-        return
-
-    await handle_answer_callback(update, context)
-    await check_and_complete_if_ready(context, user_id)
-
-
-async def force_lesson(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user = db.get_user(user_id)
-    if not user:
-        await update.message.reply_text(t("no_active_program"))
-        return
-    
-    lang = user.get("language", "ar")
-    completed = user.get("completed_lessons", 0)
-    sub_status = user.get("subscription_status", "trial")
-    
-    if completed >= TRIAL_LIMIT and sub_status != "active":
-        await send_subscription_prompt(user_id, context, lang)
-        return
-
-    await send_lesson(context.bot, user_id, lang, user["current_lesson"], context)
-
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error("خطأ غير متوقع أثناء معالجة تحديث", exc_info=context.error)
+        logger.error(f"خطأ في جدولة الوقت للمستخدم {user_id}: {e}")
+        
+    await query.edit_message_text(text=t("time_saved", lang).format(time=time_str))
 
 
 def main():
-    if not BOT_TOKEN:
-        raise RuntimeError("يجب تعيين TELEGRAM_BOT_TOKEN في متغيرات البيئة.")
-
-    threading.Thread(target=run_flask, daemon=True).start()
-
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        logger.error("لم يتم العثور على توكن البوت TELEGRAM_BOT_TOKEN في متغيرات البيئة!")
+        return
+        
     db.init_db()
-
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("progress", progress_command))
-    app.add_handler(CommandHandler("settings", settings_command))
-    app.add_handler(CommandHandler("lesson", force_lesson))
-    app.add_handler(CommandHandler("stats", stats_command))
-    app.add_handler(CommandHandler("excel", download_excel_command))
-
-    app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
-    app.add_handler(CallbackQueryHandler(handle_level_choice, pattern=r"^level\|"))
-    app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
-    app.add_handler(CallbackQueryHandler(handle_rest_days_choice, pattern=r"^rest\|"))
-    app.add_handler(CallbackQueryHandler(handle_gender_choice, pattern=r"^gender\|"))
-    app.add_handler(CallbackQueryHandler(handle_settings_choice, pattern=r"^settings\|"))
-    app.add_handler(CallbackQueryHandler(handle_answer_callback_and_check))
-
-    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice_message))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
-
-    app.add_error_handler(error_handler)
-
-    restore_all_schedules(app.job_queue)
-
-    logger.info("نور بوت يعمل الآن...")
-    app.run_polling()
+    
+    application = ApplicationBuilder().token(token).build()
+    
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CallbackQueryHandler(handle_language_choice, pattern="^lang\\|"))
+    application.add_handler(CallbackQueryHandler(handle_rest_days_choice, pattern="^rest\\|"))
+    application.add_handler(CallbackQueryHandler(handle_gender_choice, pattern="^gender\\|"))
+    application.add_handler(CallbackQueryHandler(handle_time_choice, pattern="^time\\|"))
+    
+    # استعادة الجدولة السابقة عند الإقلاع
+    restore_all_schedules(application.job_queue)
+    
+    logger.info("البوت يعمل الآن...")
+    application.run_polling()
 
 
 if __name__ == "__main__":
