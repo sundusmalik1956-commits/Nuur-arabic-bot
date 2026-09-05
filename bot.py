@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 bot.py
-نقطة التشغيل الرئيسية لـ "نور بوت".
+نقطة التشغيل الرئيسية لـ "نور بوت" مع دعم اختيار وقت الدرس، أيام الإجازة، الجنس، وعرض الملخص.
 """
 
 import os
@@ -31,12 +31,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-
-# رابط Tribute الخاص بك للاشتراك
 TRIBUTE_PAYMENT_LINK = "https://t.me/tribute/app?startapp=s152f"
-
-# عدد الدروس المجانية المسموحة قبل طلب الاشتراك (ضبطت على 5 دروس)
 TRIAL_LIMIT = 5 
+
+# روابط مجموعات الدردشة
+GROUP_MALE = "https://t.me/rijalnurakademik"
+GROUP_FEMALE = "https://t.me/nisanurakademik"
 
 app_flask = Flask(__name__)
 
@@ -73,17 +73,13 @@ async def handle_language_choice(update: Update, context: ContextTypes.DEFAULT_T
     await context.bot.send_message(chat_id=user_id, text=t("language_changed", lang))
 
     if not is_settings_change:
-        # 1. رسالة الترحيب
         await context.bot.send_message(chat_id=user_id, text=t("welcome", lang))
-        # 2. رسالة التعريف عن المستويات والدروس والاشتراك
         await context.bot.send_message(chat_id=user_id, text=t("intro_levels_info", lang))
-        # 3. إرسال خيارات تحديد المستوى أو البدء من A0
         await _send_level_selection(context.bot, user_id, lang)
 
 
 async def _send_level_selection(bot, user_id: int, lang: str):
     keyboard = InlineKeyboardMarkup([
-        # ربط زر اختبار تحديد المستوى بالبوت الخارجي المخصص للاختبار
         [InlineKeyboardButton(t("btn_take_placement_test", lang), url="https://t.me/Nurarabictestbot")],
         [
             InlineKeyboardButton("A0", callback_data="level|A0"),
@@ -108,12 +104,10 @@ async def handle_level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     choice = query.data.split("|")[1]
     await query.edit_message_reply_markup(reply_markup=None)
 
-    # حفظ المستوى المختار (A0, A1, A2, B1, B2)
     if hasattr(db, "set_user_level"):
         db.set_user_level(user_id, choice)
         
     await context.bot.send_message(chat_id=user_id, text=t("level_chosen", lang, level=choice))
-    # الانتقال لاختيار وقت الدراسة اليومي
     await _send_time_picker(context.bot, user_id, lang)
 
 
@@ -130,21 +124,146 @@ async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     user_id = query.from_user.id
     time_str = query.data.split("|")[1]
-    hour, minute = map(int, time_str.split(":"))
-
-    user = db.get_user(user_id)
-    lang = user.get("language", "ar")
-
     db.set_lesson_time(user_id, time_str)
-    schedule_daily_lesson(context.job_queue, user_id, hour, minute)
 
     await query.edit_message_reply_markup(reply_markup=None)
+    user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
+    
     await context.bot.send_message(chat_id=user_id, text=t("time_confirmed", lang, time=time_str))
+    
+    # الانتقال لخطوة اختيار أيام الإجازة
+    await _send_rest_days_picker(context.bot, user_id, lang, selected=[])
 
-    if next_study_moment_is_today(hour, minute):
-        await context.bot.send_message(chat_id=user_id, text=t("lesson_starting_today", lang))
-    else:
-        await context.bot.send_message(chat_id=user_id, text=t("lesson_starting_next_study_day", lang))
+
+async def _send_rest_days_picker(bot, user_id: int, lang: str, selected=None):
+    if selected is None:
+        selected = []
+    
+    days = [
+        ("الأحد / Sunday", "Sun"),
+        ("الإثنين / Monday", "Mon"),
+        ("الثلاثاء / Tuesday", "Tue"),
+        ("الأربعاء / Wednesday", "Wed"),
+        ("الخميس / Thursday", "Thu"),
+        ("الجمعة / Friday", "Fri"),
+        ("السبت / Saturday", "Sat"),
+    ]
+    
+    keyboard_rows = []
+    for label, code in days:
+        check = "✅ " if code in selected else "⬜ "
+        keyboard_rows.append([InlineKeyboardButton(check + label, callback_data=f"rest|toggle|{code}")])
+    
+    keyboard_rows.append([InlineKeyboardButton(t("btn_save_rest_days", lang), callback_data="rest|save")])
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+    
+    await bot.send_message(chat_id=user_id, text=t("ask_rest_days", lang), reply_markup=keyboard)
+
+
+async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
+    
+    data_parts = query.data.split("|")
+    action = data_parts[1]
+    
+    if "temp_rest_days" not in context.user_data:
+        context.user_data["temp_rest_days"] = []
+        
+    selected = context.user_data["temp_rest_days"]
+    
+    if action == "toggle":
+        code = data_parts[2]
+        if code in selected:
+            selected.remove(code)
+        else:
+            if len(selected) < 2:
+                selected.append(code)
+            else:
+                await query.answer("يمكنك اختيار يومي إجازة فقط كحد أقصى.", show_alert=True)
+                return
+                
+        days = [
+            ("الأحد / Sunday", "Sun"),
+            ("الإثنين / Monday", "Mon"),
+            ("الثلاثاء / Tuesday", "Tue"),
+            ("الأربعاء / Wednesday", "Wed"),
+            ("الخميس / Thursday", "Thu"),
+            ("الجمعة / Friday", "Fri"),
+            ("السبت / Saturday", "Sat"),
+        ]
+        keyboard_rows = []
+        for label, code_item in days:
+            check = "✅ " if code_item in selected else "⬜ "
+            keyboard_rows.append([InlineKeyboardButton(check + label, callback_data=f"rest|toggle|{code_item}")])
+        keyboard_rows.append([InlineKeyboardButton(t("btn_save_rest_days", lang), callback_data="rest|save")])
+        
+        try:
+            await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard_rows))
+        except Exception:
+            pass
+            
+    elif action == "save":
+        if len(selected) != 2:
+            await query.answer("الرجاء اختيار يومي إجازة بالضبط.", show_alert=True)
+            return
+            
+        context.user_data["saved_rest_days"] = selected
+        await query.edit_message_reply_markup(reply_markup=None)
+        
+        # الانتقال لخطوة اختيار الجنس
+        await _send_gender_picker(context.bot, user_id, lang)
+
+
+async def _send_gender_picker(bot, user_id: int, lang: str):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(t("btn_male", lang), callback_data="gender|male")],
+        [InlineKeyboardButton(t("btn_female", lang), callback_data="gender|female")]
+    ])
+    await bot.send_message(chat_id=user_id, text=t("ask_gender", lang), reply_markup=keyboard)
+
+
+async def handle_gender_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
+    
+    gender = query.data.split("|")[1]
+    await query.edit_message_reply_markup(reply_markup=None)
+    
+    # تحديد رابط المجموعة بناءً على الجنس
+    chat_link = GROUP_MALE if gender == "male" else GROUP_FEMALE
+    context.user_data["saved_gender"] = gender
+    context.user_data["chat_link"] = chat_link
+    
+    # استخراج البيانات الكاملة لعرض الملخص
+    name = user.get("first_name", "طالب")
+    level = user.get("current_level", "A1") # أو المستوى المحفوظ
+    time_str = user.get("lesson_time", "12:00")
+    rest_days = ", ".join(context.user_data.get("saved_rest_days", ["Sun", "Sat"]))
+    
+    summary_text = t(
+        "registration_summary", lang,
+        name=name,
+        level=level,
+        time=time_str,
+        rest_days=rest_days,
+        chat_link=chat_link
+    )
+    
+    await context.bot.send_message(chat_id=user_id, text=summary_text, parse_mode="Markdown", disable_web_page_preview=True)
+    
+    # جدولة الدرس الأول
+    hour, minute = map(int, time_str.split(":"))
+    schedule_daily_lesson(context.job_queue, user_id, hour, minute)
 
 
 async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -365,6 +484,8 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
     app.add_handler(CallbackQueryHandler(handle_level_choice, pattern=r"^level\|"))
     app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
+    app.add_handler(CallbackQueryHandler(handle_rest_days_choice, pattern=r"^rest\|"))
+    app.add_handler(CallbackQueryHandler(handle_gender_choice, pattern=r"^gender\|"))
     app.add_handler(CallbackQueryHandler(handle_settings_choice, pattern=r"^settings\|"))
     app.add_handler(CallbackQueryHandler(handle_answer_callback_and_check))
 
