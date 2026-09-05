@@ -51,14 +51,15 @@ async def handle_language_choice(update: Update, context: ContextTypes.DEFAULT_T
         return
         
     lang_code = data.split("|")[1]
-    if lang_code not in language_codes:
+    if lang_code not in language_codes():
         return
         
     user_id = query.from_user.id
     db.set_language(user_id, lang_code)
     
     # الانتقال لخطوة اختيار أيام الإجازة
-    await query.edit_message_text(text=t("language_saved", lang_code))
+    msg = "✅ تم حفظ لغتك بنجاح." if lang_code == "ar" else "✅ Language saved successfully."
+    await query.edit_message_text(text=msg)
     await _send_rest_days_picker(context.bot, user_id, lang_code)
 
 
@@ -144,14 +145,15 @@ async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_
         rest_days_str = ",".join(selected)
         db.update_user_fields(user_id, rest_days=rest_days_str)
         
-        await query.edit_message_text(text=t("rest_days_saved", lang))
+        msg = "✅ تم حفظ أيام الإجازة." if lang == "ar" else "✅ Rest days saved."
+        await query.edit_message_text(text=msg)
         await _send_gender_picker(context.bot, user_id, lang)
 
 
 async def _send_gender_picker(bot, user_id: int, lang: str):
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t("gender_male", lang), callback_data="gender|male")],
-        [InlineKeyboardButton(t("gender_female", lang), callback_data="gender|female")]
+        [InlineKeyboardButton(t("btn_male", lang), callback_data="gender|male")],
+        [InlineKeyboardButton(t("btn_female", lang), callback_data="gender|female")]
     ])
     msg_text = "الرجاء اختيار الجنس لتحديد مجموعة المناقشة المناسبة:" if lang == "ar" else "Please select your gender:"
     await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard)
@@ -166,7 +168,7 @@ async def handle_gender_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = user.get("language", "ar") if user else "ar"
     
     gender = query.data.split("|")[1]
-    group_id = config.MEN_GROUP_ID if gender == "male" else config.WOMEN_GROUP_ID
+    group_id = getattr(config, "MEN_GROUP_ID", None) if gender == "male" else getattr(config, "WOMEN_GROUP_ID", None)
     
     db.update_user_fields(user_id, gender=gender, group_id=group_id)
     await query.edit_message_text(text="تم حفظ بياناتك بنجاح! الآن اختر وقت استلام الدرس اليومي:")
@@ -185,7 +187,8 @@ async def _send_time_picker(bot, user_id: int, lang: str):
         keyboard_rows.append(row)
         
     keyboard = InlineKeyboardMarkup(keyboard_rows)
-    await bot.send_message(chat_id=user_id, text=t("choose_time", lang), reply_markup=keyboard)
+    msg_text = "اختر الوقت المناسب لوصول درسك اليومي:" if lang == "ar" else "Choose your daily lesson time:"
+    await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard)
 
 
 async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -205,7 +208,8 @@ async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         logger.error(f"خطأ في جدولة الوقت للمستخدم {user_id}: {e}")
         
-    await query.edit_message_text(text=t("time_saved", lang).format(time=time_str))
+    msg = f"✅ تم! تم ضبط وقت الدرس الساعة {time_str}." if lang == "ar" else f"✅ Done! Lesson time set to {time_str}."
+    await query.edit_message_text(text=msg)
 
 
 def main():
