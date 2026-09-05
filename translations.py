@@ -133,4 +133,3 @@ def language_keyboard_rows():
     for code, (name, flag) in SUPPORTED_LANGUAGES.items():
         rows.append((f"{flag} {name}", f"lang|{code}"))
     return rows
-ةا
