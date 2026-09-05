@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 translations.py
-كل نصوص واجهة البوت (التعليمات، الأزرار، الرسائل) مترجمة لـ 11 لغة.
+كل نصوص واجهة البوت (التعليمات، الأزرار، أسماء الأيام، والرسائل) مترجمة لـ 11 لغة.
 """
 
 SUPPORTED_LANGUAGES = {
@@ -19,6 +19,21 @@ SUPPORTED_LANGUAGES = {
 }
 
 DEFAULT_LANG = "ar"
+
+# أسماء الأيام مترجمة للـ 11 لغة (الترتيب: الأحد إلى السبت)
+DAYS_OF_WEEK = {
+    "ar": ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+    "en": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "tr": ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"],
+    "fr": ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"],
+    "es": ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+    "de": ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"],
+    "ru": ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"],
+    "id": ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"],
+    "ur": ["اتوار", "پیر", "منگل", "بدھ", "جمعرات", "جمعہ", "ہفتہ"],
+    "bn": ["রবিবার", "সোমবার", "মঙ্গলবার", "বুধবারে", "বৃহস্পতিবার", "শুক্রবার", "শনিবার"],
+    "fa": ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"],
+}
 
 TEXTS = {
     "choose_language": {
@@ -96,7 +111,7 @@ TEXTS = {
         "ru": "✅ Уровень выбран: {level}. Установим время урока:",
         "id": "✅ Level dipilih: {level}. Mari tentukan waktu pelajaran harian Anda:",
         "ur": "✅ سطح منتخب ہو گئی: {level}۔ اب اپنے روزانہ سبق کا وقت طے کریں:",
-        "bn": "✅ স্তর নির্বাচিত হয়েছে: {level}। আপনার পাঠ의 সময় নির্ধারণ করুন:",
+        "bn": "✅ স্তর নির্বাচিত হয়েছে: {level}। আপনার পাঠের সময় নির্ধারণ করুন:",
         "fa": "✅ سطح انتخاب شد: {level}. زمان درس روزانه را تعیین کنیم:",
     },
     "ask_time": {
@@ -135,7 +150,7 @@ TEXTS = {
         "ru": "🗓️ Выберите 2 дня отдыха в неделю, когда уроки не будут отправляться:\n(Нажмите на день, затем сохраните)",
         "id": "🗓️ Pilih 2 hari istirahat per minggu di mana tidak ada pelajaran yang dikirim:\n(Ketuk hari untuk memilih/membatalkan pilihan, lalu klik simpan)",
         "ur": "🗓️ ہفتے کے اپنے 2 آرام کے دن منتخب کریں جن میں کوئی سبق نہیں بھیجا جائے گا:\n(منتخب کرنے کے لیے دن پر ٹیپ کریں اور پھر محفوظ کریں پر کلک کریں)",
-        "bn": "🗓️ সপ্তাহে আপনার ২ দিন ছুিরর দিন বেছে নিন যেখানে কোনো পাঠ পাঠানো হবে না:\n(নির্বাচন করতে দিনে ট্যাপ করুন এবং সংরক্ষণ করুন)",
+        "bn": "🗓️ সপ্তাহে আপনার ২ দিন ছুটির দিন বেছে নিন যেখানে কোনো পাঠ পাঠানো হবে না:\n(নির্বাচন করতে দিনে ট্যাপ করুন এবং সংরক্ষণ করুন)",
         "fa": "🗓️ ۲ روز استراحت در هفته را که در آن‌ها درسی ارسال نمی‌شود انتخاب کنید:\n(برای انتخاب روی روز ضربه بزنید و سپس ذخیره را بزنید)",
     },
     "btn_save_rest_days": {
@@ -161,7 +176,7 @@ TEXTS = {
         "ru": "👤 Пожалуйста, выберите ваш пол (чтобы направить вас в соответствующий чат):",
         "id": "👤 Silakan pilih jenis kelamin Anda (untuk mengarahkan Anda ke grup obrolan yang sesuai):",
         "ur": "👤 براہ کرم اپنی صنف منتخب کریں (آپ کو مناسب چیٹ گروپ کی طرف رہنمائی کرنے کے لیے):",
-        "bn": "👤 অনুগ্রহ করে আপনার লিঙ্গ নির্বাচন করুন (উপযুক্ত চ্যাট গ্রুপে আপনাকে গাইড করার জন্য):",
+        "bn": "👤 অনুগ্রহ করে আপনার লিঙ্গ নির্বাচন করুন (উপयुक्त চ্যাট গ্রুপে আপনাকে গাইড করার জন্য):",
         "fa": "👤 لطفاً جنسیت خود را انتخاب کنید (تا شما را به گروه چت مناسب هدایت کنیم):",
     },
     "btn_male": {
@@ -223,8 +238,8 @@ TEXTS = {
     "skill_listening": {"ar": "🔹 الاستماع", "en": "🔹 Listening", "tr": "🔹 Dinleme", "fr": "🔹 Écoute", "es": "🔹 Escucha", "de": "🔹 Hören", "ru": "🔹 Аудирование", "id": "🔹 Mendengarkan", "ur": "🔹 سننا", "bn": "🔹 শ্রবণ", "fa": "🔹 شنیدن"},
     "skill_speaking": {"ar": "🔹 المحادثة", "en": "🔹 Speaking", "tr": "🔹 Konuşma", "fr": "🔹 Expression orale", "es": "🔹 Hablar", "de": "🔹 Sprechen", "ru": "🔹 Разговор", "id": "🔹 Berbicara", "ur": "🔹 بولنا", "bn": "🔹 কথা বলা", "fa": "🔹 مکالمه"},
     "skill_writing": {"ar": "🔹 الكتابة", "en": "🔹 Writing", "tr": "🔹 Yazma", "fr": "🔹 Écriture", "es": "🔹 Escritura", "de": "🔹 Schreiben", "ru": "🔹 Письмо", "id": "🔹 Menulis", "ur": "🔹 لکھنا", "bn": "🔹 লেখা", "fa": "🔹 نوشتن"},
-    "correct_answer": {"ar": "✅ إجابة صحيحة!", "en": "✅ Correct!", "tr": "✅ Doğru cevap!", "fr": "✅ Correct !", "es": "✅ ¡Correcto!", "de": "✅ Richtig!", "ru": "✅ Правильно!", "id": "✅ Benar!", "ur": "✅ درست जवाब!", "bn": "✅ সঠিক উত্তর!", "fa": "✅ پاسخ درست!"},
-    "wrong_answer_retry": {"ar": "❌ ليست صحيحة تمامًا. حاول مرة أخرى.", "en": "❌ Not quite. Try again.", "tr": "❌ Tamamen doğru değil. Tekrar deneyin.", "fr": "❌ Pas tout à fait. Réessayez.", "es": "❌ No exactamente. Inténtalo de nuevo.", "de": "❌ Nicht ganz. Versuchen Sie es noch einmal.", "ru": "❌ Не совсем так. Попробуйте еще раз.", "id": "❌ Kurang tepat. Coba lagi.", "ur": "❌ بالکل درست نہیں۔ دوبارہ کوشش کریں۔", "bn": "❌ ঠিক নয়। আবার চেষ্টা করুন।", "fa": "❌ کاملاً درست نیست. دوباره تلاش کنید."},
+    "correct_answer": {"ar": "✅ إجابة صحيحة!", "en": "✅ Correct!", "tr": "✅ Doğru cevap!", "fr": "✅ Correct !", "es": "✅ ¡Correcto!", "de": "✅ Richtig!", "ru": "✅ Правильно!", "id": "✅ Benar!", "ur": "✅ درست جواب!", "bn": "✅ সঠিক উত্তর!", "fa": "✅ پاسخ درست!"},
+    "wrong_answer_retry": {"ar": "❌ ليست صحيحة تمامًا. حاول مرة أخرى.", "en": "❌ Not quite. Try again.", "tr": "❌ Tamamen doğru değil. Tekrar deneyin.", "fr": "❌ Pas tout à fait. Réessayez.", "es": "❌ No exactamente. Inténtalo de nuevo.", "de": "❌ Nicht ganz. Versuchen Sie es noch einmal.", "ru": "❌ Не совсем так. Попробуйте еще раз.", "id": "❌ Kurang tepat. Coba lagi.", "ur": "❌ بالکل درست نہیں۔ دوبارہ کوشش کریں۔", "bn": "❌ ঠিক নয়। আবার চেষ্টা করুন۔", "fa": "❌ کاملاً درست نیست. دوباره تلاش کنید."},
     "speaking_prompt_note": {"ar": "🎙️ أرسل إجابتك كتسجيل صوتي أو رسالة نصية.", "en": "🎙️ Send your answer as a voice or text message.", "tr": "🎙️ Cevabınızı sesli veya yazılı mesaj olarak gönderin.", "fr": "🎙️ Envoyez votre réponse sous forme de message vocal ou textuel.", "es": "🎙️ Envía tu respuesta como mensaje de voz o texto.", "de": "🎙️ Senden Sie Ihre Antwort als Sprach- oder Textnachricht.", "ru": "🎙️ Отправьте ответ голосом или текстом.", "id": "🎙️ Kirim jawaban Anda sebagai pesan suara atau teks.", "ur": "🎙️ اپنا جواب صوتی یا تحریری پیغام کے طور پر بھیجیں۔", "bn": "🎙️ আপনার উত্তর ভয়েস বা টেক্সট মেসেজ হিসেবে পাঠান।", "fa": "🎙️ پاسخ خود را به صورت پیام صوتی یا متنی ارسال کنید."},
     "writing_prompt_note": {"ar": "✍️ اكتب إجابتك وسيقوم الذكاء الاصطناعي بتصحيحها.", "en": "✍️ Write your answer and AI will correct it.", "tr": "✍️ Cevabınızı yazın, yapay zeka düzeltecektir.", "fr": "✍️ Écrivez votre réponse et l'IA la corrigera.", "es": "✍️ Escribe tu respuesta y la IA la corregirá.", "de": "✍️ Schreiben Sie Ihre Antwort und die KI korrigiert sie.", "ru": "✍️ Напишите ответ, и ИИ исправит его.", "id": "✍️ Tulis jawaban Anda dan AI akan memperbaikinya.", "ur": "✍️ اپنا جواب لکھیں اور AI اسے درست کرے گا۔", "bn": "✍️ আপনার উত্তর লিখুন এবং AI এটি সংশোধন করবে।", "fa": "✍️ پاسخ خود را بنویسید و هوش مصنوعی آن را اصلاح می‌کند."},
     "ai_analyzing": {"ar": "⏳ جارٍ تحليل إجابتك...", "en": "⏳ Analyzing your answer...", "tr": "⏳ Cevabınız analiz ediliyor...", "fr": "⏳ Analyse de votre réponse...", "es": "⏳ Analizando tu respuesta...", "de": "⏳ Analysiere Ihre Antwort...", "ru": "⏳ Анализ вашего ответа...", "id": "⏳ Menganalisis jawaban Anda...", "ur": "⏳ آپ کے جواب کا تجزیہ کیا جا رہا ہے...", "bn": "⏳ আপনার উত্তর বিশ্লেষণ করা হচ্ছে...", "fa": "⏳ در حال تحلیل پاسخ شما..."},
@@ -234,7 +249,7 @@ TEXTS = {
     "settings_title": {"ar": "⚙️ الإعدادات", "en": "⚙️ Settings", "tr": "⚙️ Ayarlar", "fr": "⚙️ Paramètres", "es": "⚙️ Ajustes", "de": "⚙️ Einstellungen", "ru": "⚙️ Настройки", "id": "⚙️ Pengaturan", "ur": "⚙️ سیٹنگز", "bn": "⚙️ সেটিংস", "fa": "⚙️ تنظیمات"},
     "settings_change_language": {"ar": "🌐 تغيير اللغة", "en": "🌐 Change language", "tr": "🌐 Dili değiştir", "fr": "🌐 Changer de langue", "es": "🌐 Cambiar idioma", "de": "🌐 Sprache ändern", "ru": "🌐 Изменить язык", "id": "🌐 Ubah bahasa", "ur": "🌐 زبان تبدیل کریں", "bn": "🌐 ভাষা পরিবর্তন করুন", "fa": "🌐 تغییر زبان"},
     "settings_change_time": {"ar": "⏰ تغيير الوقت", "en": "⏰ Change time", "tr": "⏰ Saati değiştir", "fr": "⏰ Changer l'heure", "es": "⏰ Cambiar hora", "de": "⏰ Zeit ändern", "ru": "⏰ Изменить время", "id": "⏰ Ubah waktu", "ur": "⏰ وقت تبدیل کریں", "bn": "⏰ সময় পরিবর্তন করুন", "fa": "⏰ تغییر زمان"},
-    "language_changed": {"ar": "✅ تم تغيير اللغة.", "en": "✅ Language changed.", "tr": "✅ Dil değiştirildi.", "fr": "✅ Langue modifiée.", "es": "✅ Idioma cambiado.", "de": "✅ Sprache geändert.", "ru": "✅ Язык изменен.", "id": "✅ Bahasa diubah.", "ur": "✅ زبان تبدیل کر دی گئی ہے۔", "bn": "✅ ভাষা পরিবর্তিত হয়েছে।", "fa": "✅ زبان تغییر کرد."},
+    "language_changed": {"ar": "✅ تم تغيير اللغة.", "en": "✅ Language changed.", "tr": "✅ Dil değiştirildi.", "fr": "✅ Langue modifiée.", "es": "✅ Idioma cambiado.", "de": "✅ Sprache geändert.", "ru": "✅ Язык изменен.", "id": "✅ Bahasa diubah.", "ur": "✅ زبان تبدیل کر دی گئی ہے۔", "bn": "✅ ভাষা পরিবর্তিত হয়েছে.", "fa": "✅ زبان تغییر کرد."},
     "no_active_program": {"ar": "لم تبدأ البرنامج بعد. أرسل /start للبدء.", "en": "No active program. Send /start.", "tr": "Aktif program yok. /start gönderin.", "fr": "Aucun programme actif. Envoyez /start.", "es": "No hay programa activo. Envía /start.", "de": "Kein aktives Programm. Senden Sie /start.", "ru": "Нет активной программы. Отправьте /start.", "id": "Tidak ada program aktif. Kirim /start.", "ur": "کوئی فعال پروگرام نہیں۔ /start بھیجیں۔", "bn": "কোনো সক্রিয় প্রোগ্রাম নেই। /start পাঠান।", "fa": "برنامه فعالی وجود ندارد. /start را بفرستید."},
 }
 
@@ -254,3 +269,8 @@ def language_keyboard_rows():
     for code, (name, flag) in SUPPORTED_LANGUAGES.items():
         rows.append((f"{flag} {name}", f"lang|{code}"))
     return rows
+
+
+def get_days_list(lang: str = DEFAULT_LANG):
+    """إرجاع قائمة الأيام مترجمة حسب اللغة المختارة"""
+    return DAYS_OF_WEEK.get(lang) or DAYS_OF_WEEK.get(DEFAULT_LANG)
