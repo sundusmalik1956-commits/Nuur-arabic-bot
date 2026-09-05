@@ -83,7 +83,8 @@ async def handle_language_choice(update: Update, context: ContextTypes.DEFAULT_T
 
 async def _send_level_selection(bot, user_id: int, lang: str):
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(t("btn_take_placement_test", lang), callback_data="level|test")],
+        # ربط زر اختبار تحديد المستوى بالبوت الخارجي المخصص للاختبار
+        [InlineKeyboardButton(t("btn_take_placement_test", lang), url="https://t.me/Nurarabictestbot")],
         [
             InlineKeyboardButton("A0", callback_data="level|A0"),
             InlineKeyboardButton("A1", callback_data="level|A1"),
@@ -107,15 +108,13 @@ async def handle_level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     choice = query.data.split("|")[1]
     await query.edit_message_reply_markup(reply_markup=None)
 
-    if choice == "test":
-        await context.bot.send_message(chat_id=user_id, text=t("placement_test_intro", lang))
-        # هنا يمكنك توجيه الطالب لاحقاً لبدء اختبار تحديد المستوى
-    else:
-        # حفظ المستوى المختار (A0, A1, A2, B1, B2)
-        db.set_user_level(user_id, choice) if hasattr(db, "set_user_level") else None
-        await context.bot.send_message(chat_id=user_id, text=t("level_chosen", lang, level=choice))
-        # الانتقال لاختيار وقت الدراسة اليومي
-        await _send_time_picker(context.bot, user_id, lang)
+    # حفظ المستوى المختار (A0, A1, A2, B1, B2)
+    if hasattr(db, "set_user_level"):
+        db.set_user_level(user_id, choice)
+        
+    await context.bot.send_message(chat_id=user_id, text=t("level_chosen", lang, level=choice))
+    # الانتقال لاختيار وقت الدراسة اليومي
+    await _send_time_picker(context.bot, user_id, lang)
 
 
 async def _send_time_picker(bot, user_id: int, lang: str):
