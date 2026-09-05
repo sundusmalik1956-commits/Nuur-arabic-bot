@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 database.py
-طبقة SQLite الوحيدة لحفظ كل حالة البوت. لا يُعتمد على context.user_data لأي بيانات
-يجب أن تبقى بعد إعادة تشغيل البوت — فقط هذا الملف هو مصدر الحقيقة.
+طبقة SQLite الوحيدة لحفظ كل حالة البوت. بالإضافة إلى تحديث ملف Excel لبيانات الطلاب.
 """
 
 import sqlite3
@@ -10,10 +9,12 @@ import os
 import logging
 from datetime import datetime
 from contextlib import contextmanager
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "noor_bot.db")
+EXCEL_PATH = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
 
 TOTAL_LESSONS = 18
 FREE_LESSONS = 5
@@ -100,6 +101,42 @@ def _now():
     return datetime.utcnow().isoformat()
 
 
+def sync_student_to_excel(user_id: int):
+    """تحديث بيانات الطالب الفردي في ملف الإكسل تلقائياً"""
+    try:
+        user = get_user(user_id)
+        if not user:
+            return
+        
+        record = {
+            "user_id": str(user.get("user_id")),
+            "username": user.get("username", ""),
+            "first_name": user.get("first_name", ""),
+            "language": user.get("language", ""),
+            "lesson_time": user.get("lesson_time", ""),
+            "current_lesson": user.get("current_lesson", 1),
+            "completed_lessons": user.get("completed_lessons", 0),
+            "subscription_status": user.get("subscription_status", "trial"),
+            "updated_at": user.get("updated_at", _now())
+        }
+        
+        if os.path.exists(EXCEL_PATH):
+            df = pd.read_excel(EXCEL_PATH)
+            df["user_id"] = df["user_id"].astype(str)
+            if record["user_id"] in df["user_id"].values:
+                for k, v in record.items():
+                    df.loc[df["user_id"] == record["user_id"], k] = v
+            else:
+                new_row = pd.DataFrame([record])
+                df = pd.concat([df, new_row], ignore_index=True)
+        else:
+            df = pd.DataFrame([record])
+            
+        df.to_excel(EXCEL_PATH, index=False)
+    except Exception as e:
+        logger.error(f"خطأ أثناء مزامنة بيانات الطالب مع الإكسل: {e}")
+
+
 # ---------------------------------------------------------------------------
 # المستخدمون
 # ---------------------------------------------------------------------------
@@ -125,6 +162,7 @@ def create_user_if_missing(user_id: int, username: str = None, first_name: str =
             (user_id, username, first_name, _now(), _now()),
         )
         conn.commit()
+    sync_student_to_excel(user_id)
 
 
 def update_user_fields(user_id: int, **fields):
@@ -136,6 +174,7 @@ def update_user_fields(user_id: int, **fields):
     with get_conn() as conn:
         conn.execute(f"UPDATE users SET {columns} WHERE user_id = ?", values)
         conn.commit()
+    sync_student_to_excel(user_id)
 
 
 def set_language(user_id: int, language: str):
@@ -169,6 +208,7 @@ def advance_to_next_lesson(user_id: int):
             (_now(), user_id),
         )
         conn.commit()
+    sync_student_to_excel(user_id)
 
 
 def set_subscription_status(user_id: int, status: str):
@@ -190,12 +230,10 @@ def program_finished(user: dict) -> bool:
 # ---------------------------------------------------------------------------
 
 def set_pending_skill(user_id: int, skill: str | None):
-    """حفظ أو مسح حالة المهارة المعلقة للمستخدم في قاعدة البيانات بشكل دائم."""
     update_user_fields(user_id, pending_skill=skill)
 
 
 def get_pending_skill(user_id: int) -> str | None:
-    """استرجاع المهارة المعلقة الحالية الخاصة بالمستخدم."""
     user = get_user(user_id)
     if user and user.get("pending_skill"):
         return user["pending_skill"]
@@ -240,7 +278,6 @@ def get_completed_skills(user_id: int, lesson_number: int) -> set:
 
 
 def reset_lesson_progress(user_id: int, lesson_number: int):
-    """يمسح تقدّم مهارات درس معيّن، يُستخدم عند بدء الدرس من جديد."""
     with get_conn() as conn:
         conn.execute(
             "DELETE FROM lesson_progress WHERE user_id = ? AND lesson_number = ?",
