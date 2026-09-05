@@ -2,7 +2,7 @@
 """
 lesson_engine.py
 المحرك المشترك الذي تديره مستويات الدروس المنظمة في مجلدات (levels/level_X/).
-تم تعديله لدعم الهيكلة الجديدة للمجلدات الديناميكية مع الحفاظ على كافة الوظائف.
+تم تعديله لدعم الهيكلة الجديدة للمجلدات الديناميكية مع توجيه الإنجازات لقروب الرجال أو النساء تلقائياً.
 """
 
 import logging
@@ -15,7 +15,7 @@ from telegram.ext import ContextTypes
 
 import database as db
 from translations import t
-from config import ACHIEVEMENT_GROUP_ID
+from config import MEN_GROUP_ID, WOMEN_GROUP_ID
 from services import ai_service
 
 logger = logging.getLogger(__name__)
@@ -45,9 +45,8 @@ AI_SKILLS = {"speaking", "writing"}
 
 
 async def send_lesson(bot, user_id: int, language: str, lesson_number: int, context: ContextTypes.DEFAULT_TYPE):
-    # افتراضياً، المستوى الأول (أو يمكن جلب المستوى الحقيقي من قاعدة البيانات إذا أردتِ لاحقاً)
     level_number = 1 
-    lesson = _load_lesson_module(level_number, lesson_number) # أو تمرير رقم الدرس الفعلي
+    lesson = _load_lesson_module(level_number, lesson_number)
     if lesson is None:
         logger.warning(f"لا يوجد محتوى بعد للدرس رقم {lesson_number} (المستخدم {user_id}).")
         return
@@ -55,22 +54,16 @@ async def send_lesson(bot, user_id: int, language: str, lesson_number: int, cont
     db.reset_lesson_progress(user_id, lesson_number)
     db.mark_lesson_started_today(user_id)
 
-    # بدء الخطوة الأولى مباشرة
     await _send_step(context, user_id, level_number, lesson_number, step_index=0)
 
 
 def _load_lesson_module(level_number: int, lesson_number: int):
-    """
-    تحميل ملف الدرس ديناميكياً من المجلدات المنظمة: levels.level_X.lesson_Y
-    مع الحفاظ على دعم التوافقية القديمة إن وجد الملف في الجذر.
-    """
     module_path = f"levels.level_{level_number}.lesson_{lesson_number}"
     try:
         module = importlib.import_module(module_path)
         importlib.reload(module)
         return module.LESSON
     except ModuleNotFoundError:
-        # محاولة احتياطية للبحث بالطريقة القديمة إن لم يتم نقل الملف بعد
         old_module_name = f"lesson{lesson_number}"
         try:
             module = importlib.import_module(old_module_name)
@@ -309,7 +302,7 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     user = db.get_user(user_id)
     lang = user.get("language", "ar") if user else "ar"
-    level_number = 1 # المستوى الافتراضي
+    level_number = 1
 
     data_parts = query.data.split("|")
     _, lesson_number_str, skill, question_key, choice_index_str = data_parts[:5]
@@ -374,10 +367,6 @@ def _all_question_keys_for_skill(lesson, skill):
             keys.append(ex.get("key", str(i)))
     return keys
 
-
-# ---------------------------------------------------------------------------
-# استقبال إجابات المحادثة/الكتابة وتصحيحها عبر AI والانتقال الفوري بعدها
-# ---------------------------------------------------------------------------
 
 async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, skill: str,
                             student_text: str = None, audio_bytes: bytes = None):
@@ -500,6 +489,7 @@ async def _complete_lesson_now(context: ContextTypes.DEFAULT_TYPE, user_id: int,
     db.log_completion(user_id, lesson_number, title)
     db.advance_to_next_lesson(user_id)
 
+    # إعلان الإنجاز مع توجيهه تلقائياً للقروب الصحيح (رجال أو نساء) بناءً على جنس الطالب
     await _announce_achievement(context, user_id, lesson_number, title)
 
     user = db.get_user(user_id)
@@ -508,10 +498,18 @@ async def _complete_lesson_now(context: ContextTypes.DEFAULT_TYPE, user_id: int,
 
 
 async def _announce_achievement(context: ContextTypes.DEFAULT_TYPE, user_id: int, lesson_number: int, lesson_title: str):
-    if not ACHIEVEMENT_GROUP_ID:
-        return
     user = db.get_user(user_id)
-    display_name = (user.get("first_name") if user else None) or (user.get("username") if user else None) or "طالب"
+    if not user:
+        return
+
+    # تحديد القروب بناءً على جنس المستخدم المسجل في قاعدة البيانات ("female" أو "male")
+    gender = user.get("gender", "male")
+    target_chat_id = WOMEN_GROUP_ID if gender == "female" else MEN_GROUP_ID
+
+    if not target_chat_id:
+        return
+
+    display_name = (user.get("first_name")) or (user.get("username")) or "طالب"
 
     text = (
         "🎉 إنجاز جديد في نور بوت!\n\n"
@@ -520,6 +518,6 @@ async def _announce_achievement(context: ContextTypes.DEFAULT_TYPE, user_id: int
         "🌟 أحسنت! استمر في التعلم."
     )
     try:
-        await context.bot.send_message(chat_id=ACHIEVEMENT_GROUP_ID, text=text)
+        await context.bot.send_message(chat_id=target_chat_id, text=text)
     except Exception:
         logger.exception("فشل إرسال إعلان الإنجاز لقروب المناقشة")
