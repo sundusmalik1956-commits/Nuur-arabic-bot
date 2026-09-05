@@ -1,4 +1,4 @@
-python-telegram-bot[job-queue]
+python-telegram-bot[job-queue,webhooks]
 google-genai
 apscheduler
 python-dotenv
@@ -7,4 +7,3 @@ pillow
 flask
 pandas
 openpyxl
-python-telegram-bot[webhooks]
