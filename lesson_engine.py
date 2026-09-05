@@ -44,9 +44,26 @@ CONTENT_ONLY_SKILLS = {"intro"}
 AI_SKILLS = {"speaking", "writing"}
 
 
+def _get_user_level_and_lesson(user_id: int) -> tuple:
+    """تحديد رقم المستوي ورقم الدرس الحالي للطالب من قاعدة البيانات."""
+    user = db.get_user(user_id)
+    if not user:
+        return 1, 1
+    lesson_number = user.get("current_lesson", 1)
+    # فرضا كل مستوى يحتوي على عدد معين من الدروس (مثلاً 18 درساً في المستوى الأول أو يتم حسابه حسب هيكلتك)
+    # يمكنك تعديل منطق حساب رقم المستوى هنا إن كان يعتمد على حقل مستقل في قاعدة البيانات
+    level_number = user.get("current_level", 1)
+    return level_number, lesson_number
+
+
 async def send_lesson(bot, user_id: int, language: str, lesson_number: int, context: ContextTypes.DEFAULT_TYPE):
-    level_number = 1 
+    level_number, _ = _get_user_level_and_lesson(user_id)
     lesson = _load_lesson_module(level_number, lesson_number)
+    if lesson is None:
+        # تجربة البحث في المستوى الأول افتراضياً إن لم يوجد بغيره
+        level_number = 1
+        lesson = _load_lesson_module(level_number, lesson_number)
+        
     if lesson is None:
         logger.warning(f"لا يوجد محتوى بعد للدرس رقم {lesson_number} (المستخدم {user_id}).")
         return
@@ -302,7 +319,7 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     user = db.get_user(user_id)
     lang = user.get("language", "ar") if user else "ar"
-    level_number = 1
+    level_number, _ = _get_user_level_and_lesson(user_id)
 
     data_parts = query.data.split("|")
     _, lesson_number_str, skill, question_key, choice_index_str = data_parts[:5]
@@ -312,6 +329,9 @@ async def handle_answer_callback(update, context: ContextTypes.DEFAULT_TYPE):
     step_index = int(data_parts[5]) if len(data_parts) > 5 else 0
 
     lesson = _load_lesson_module(level_number, lesson_number)
+    if lesson is None:
+        level_number = 1
+        lesson = _load_lesson_module(level_number, lesson_number)
     if lesson is None:
         return
 
@@ -375,9 +395,12 @@ async def handle_ai_answer(context: ContextTypes.DEFAULT_TYPE, user_id: int, ski
         return
     lang = user.get("language", "ar")
     lesson_number = user["current_lesson"]
-    level_number = 1
+    level_number, _ = _get_user_level_and_lesson(user_id)
 
     lesson = _load_lesson_module(level_number, lesson_number)
+    if lesson is None:
+        level_number = 1
+        lesson = _load_lesson_module(level_number, lesson_number)
     if lesson is None:
         return
     
@@ -460,8 +483,11 @@ async def check_and_complete_if_ready(context: ContextTypes.DEFAULT_TYPE, user_i
     if not user:
         return
     lesson_number = user["current_lesson"]
-    level_number = 1
+    level_number, _ = _get_user_level_and_lesson(user_id)
     lesson = _load_lesson_module(level_number, lesson_number)
+    if lesson is None:
+        level_number = 1
+        lesson = _load_lesson_module(level_number, lesson_number)
     if lesson is None:
         return
     lang = user.get("language", "ar")
