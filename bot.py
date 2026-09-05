@@ -227,8 +227,23 @@ def main():
     # استعادة الجدولة السابقة عند الإقلاع
     restore_all_schedules(application.job_queue)
     
-    logger.info("البوت يعمل الآن...")
-    application.run_polling()
+    # جلب المنفذ ورابط المشروع من إعدادات Render
+    PORT = int(os.environ.get("PORT", "8443"))
+    RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL")
+    
+    logger.info("البوت يعمل الآن بنظام الـ Webhook...")
+    
+    if RENDER_EXTERNAL_URL:
+        # التشغيل الحقيقي على Render بنظام الـ Webhook
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=token,
+            webhook_url=f"{RENDER_EXTERNAL_URL}/{token}"
+        )
+    else:
+        # احتياطي لو تم التشغيل محلياً
+        application.run_polling()
 
 
 if __name__ == "__main__":
