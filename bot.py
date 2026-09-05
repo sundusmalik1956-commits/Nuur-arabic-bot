@@ -9,7 +9,7 @@ import logging
 import threading
 from flask import Flask
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, MessageHandler,
     ContextTypes, filters,
@@ -35,8 +35,8 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 # رابط Tribute الخاص بك للاشتراك
 TRIBUTE_PAYMENT_LINK = "https://t.me/tribute/app?startapp=s152f"
 
-# عدد الدروس المجانية المسموحة قبل طلب الاشتراك
-TRIAL_LIMIT = 1 
+# عدد الدروس المجانية المسموحة قبل طلب الاشتراك (ضبطت على 5 دروس)
+TRIAL_LIMIT = 5 
 
 app_flask = Flask(__name__)
 
@@ -124,8 +124,8 @@ async def progress_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_subscription_prompt(chat_id, context, lang="ar"):
-    btn_subscribe = "💳 Abonol (Aylık 5$ أو Ömür Boyu 20$)" if lang == "tr" else "💳 اشتترك الآن (شهر بـ 5$ أو مدى الحياة بـ 20$)"
-    btn_check = "🔄 Aboneliği Kontrol Et" if lang == "tr" else "🔄 تحقق من الاشتراك"
+    btn_subscribe = "💳 اشترك عبر Tribute" if lang != "tr" else "💳 Tribute ile Abone Ol"
+    btn_check = "🔄 تحقق من الاشتراك" if lang != "tr" else "🔄 Aboneliği Kontrol Et"
     
     keyboard = [
         [InlineKeyboardButton(btn_subscribe, url=TRIBUTE_PAYMENT_LINK)],
@@ -133,19 +133,8 @@ async def send_subscription_prompt(chat_id, context, lang="ar"):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    if lang == "tr":
-        text = (
-            "🎉 Ücretsiz dersleri başarıyla tamamladın!\n\n"
-            "Arapça öğrenme yolculuğuna devam etmek ve tam seviyenin kilidini açmak için lütfen Tribute üzerinden uygun abonelik planını seç.\n\n"
-            "Ödemeyi tamamladıktan sonra, hesabını hemen etkinleştirmek için (Aboneliği Kontrol Et) düğmesine bas."
-        )
-    else:
-        text = (
-            "🎉 لقد أتممت بنجاح الدروس المجانية المتاحة!\n\n"
-            "للاستمرار في رحلة تعلم اللغة العربية وفتح المستوى الكامل، يرجى اختيار خطة الاشتراك المناسبة عبر Tribute.\n\n"
-            "بعد إتمام الدفع، اضغط على زر (تحقق من الاشتراك) لتفعيل حسابك فوراً."
-        )
-        
+    # استخدام النص الجديد المطلوب بدقة بناءً على ترجمات translations.py
+    text = t("paywall_tribute", lang)
     await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
 
@@ -165,6 +154,16 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         stats_msg += f"  - الحالة: {status_label}\n\n"
 
     await update.message.reply_text(stats_msg, parse_mode="Markdown")
+
+
+async def download_excel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """أمر لإرسال ملف الإكسل الخاص بالطلاب للمشرف"""
+    excel_path = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
+    if os.path.exists(excel_path):
+        with open(excel_path, "rb") as f:
+            await update.message.reply_document(document=InputFile(f, filename="students_data.xlsx"), caption="📊 ملف بيانات الطلاب المحدث.")
+    else:
+        await update.message.reply_text("⚠️ ملف بيانات الطلاب غير موجود بعد (لم يتم تسحيل أي طالب حتى الآن).")
 
 
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -326,6 +325,7 @@ def main():
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("lesson", force_lesson))
     app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("excel", download_excel_command))  # أمر جديد لتحميل ملف الإكسل مباشرة
 
     app.add_handler(CallbackQueryHandler(handle_language_choice, pattern=r"^lang\|"))
     app.add_handler(CallbackQueryHandler(handle_time_choice, pattern=r"^time\|"))
