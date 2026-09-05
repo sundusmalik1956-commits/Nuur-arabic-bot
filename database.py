@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 database.py
-طبقة SQLite الوحيدة لحفظ كل حالة البوت. بالإضافة إلى تحديث ملف Excel لبيانات الطلاب.
+طبقة SQLite لحفظ حالة البوت ومزامنة ملف Excel لبيانات الطلاب مع دعم اللغة وأيام الإجازة.
 """
 
 import sqlite3
@@ -18,8 +18,6 @@ EXCEL_PATH = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
 
 TOTAL_LESSONS = 18
 FREE_LESSONS = 5
-STUDY_WEEKDAYS = (5, 6, 0, 1, 2)   # السبت, الأحد, الاثنين, الثلاثاء, الأربعاء
-OFF_WEEKDAYS = (3, 4)              # الخميس, الجمعة
 
 
 @contextmanager
@@ -39,7 +37,10 @@ def init_db():
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
                 first_name TEXT,
-                language TEXT,
+                language TEXT DEFAULT 'ar',
+                rest_days TEXT DEFAULT 'Thu,Fri',
+                gender TEXT,
+                group_id INTEGER,
                 lesson_time TEXT,
                 current_lesson INTEGER DEFAULT 1,
                 completed_lessons INTEGER DEFAULT 0,
@@ -102,7 +103,7 @@ def _now():
 
 
 def sync_student_to_excel(user_id: int):
-    """تحديث بيانات الطالب الفردي في ملف الإكسل تلقائياً"""
+    """مزامنة بيانات الطالب وتضمين اللغة وأيام الإجازة والجنس في ملف الإكسل تلقائياً"""
     try:
         user = get_user(user_id)
         if not user:
@@ -112,7 +113,9 @@ def sync_student_to_excel(user_id: int):
             "user_id": str(user.get("user_id")),
             "username": user.get("username", ""),
             "first_name": user.get("first_name", ""),
-            "language": user.get("language", ""),
+            "language": user.get("language", "ar"),
+            "rest_days": user.get("rest_days", "Thu,Fri"),
+            "gender": user.get("gender", ""),
             "lesson_time": user.get("lesson_time", ""),
             "current_lesson": user.get("current_lesson", 1),
             "completed_lessons": user.get("completed_lessons", 0),
@@ -137,10 +140,6 @@ def sync_student_to_excel(user_id: int):
         logger.error(f"خطأ أثناء مزامنة بيانات الطالب مع الإكسل: {e}")
 
 
-# ---------------------------------------------------------------------------
-# المستخدمون
-# ---------------------------------------------------------------------------
-
 def get_user(user_id: int):
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
@@ -148,17 +147,22 @@ def get_user(user_id: int):
 
 
 def get_all_users():
-    """جلب جميع المستخدمين المسجلين لعرضهم في إحصائيات البوت (/stats)"""
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM users").fetchall()
         return {row["user_id"]: dict(row) for row in rows}
 
 
+def get_all_scheduled_users():
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM users WHERE lesson_time IS NOT NULL AND active = 1").fetchall()
+        return [dict(row) for row in rows]
+
+
 def create_user_if_missing(user_id: int, username: str = None, first_name: str = None):
     with get_conn() as conn:
         conn.execute(
-            """INSERT OR IGNORE INTO users (user_id, username, first_name, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?)""",
+            """INSERT OR IGNORE INTO users (user_id, username, first_name, language, created_at, updated_at)
+               VALUES (?, ?, ?, 'ar', ?, ?)""",
             (user_id, username, first_name, _now(), _now()),
         )
         conn.commit()
@@ -185,18 +189,6 @@ def set_lesson_time(user_id: int, time_str: str):
     update_user_fields(user_id, lesson_time=time_str)
 
 
-def get_all_scheduled_users():
-    with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT * FROM users WHERE lesson_time IS NOT NULL AND active = 1"
-        ).fetchall()
-        return [dict(r) for r in rows]
-
-
-def mark_lesson_started_today(user_id: int):
-    update_user_fields(user_id, last_lesson_date=_now())
-
-
 def advance_to_next_lesson(user_id: int):
     with get_conn() as conn:
         conn.execute(
@@ -218,132 +210,8 @@ def set_subscription_status(user_id: int, status: str):
 def is_trial_active(user: dict) -> bool:
     if user.get("subscription_status") == "active":
         return True
-    return (user.get("completed_lessons") or 0) < FREE_LESSONS
+    return user.get("current_lesson", 1) <= FREE_LESSONS
 
 
 def program_finished(user: dict) -> bool:
-    return (user.get("completed_lessons") or 0) >= TOTAL_LESSONS
-
-
-# ---------------------------------------------------------------------------
-# إدارة المهارة المعلقة للذكاء الاصطناعي (Pending Skill)
-# ---------------------------------------------------------------------------
-
-def set_pending_skill(user_id: int, skill: str | None):
-    update_user_fields(user_id, pending_skill=skill)
-
-
-def get_pending_skill(user_id: int) -> str | None:
-    user = get_user(user_id)
-    if user and user.get("pending_skill"):
-        return user["pending_skill"]
-    return None
-
-
-# ---------------------------------------------------------------------------
-# تقدّم المهارات داخل الدرس
-# ---------------------------------------------------------------------------
-
-def start_skill(user_id: int, lesson_number: int, skill: str):
-    with get_conn() as conn:
-        conn.execute(
-            """INSERT OR IGNORE INTO lesson_progress
-               (user_id, lesson_number, skill, status, started_at)
-               VALUES (?, ?, ?, 'in_progress', ?)""",
-            (user_id, lesson_number, skill, _now()),
-        )
-        conn.commit()
-
-
-def complete_skill(user_id: int, lesson_number: int, skill: str):
-    with get_conn() as conn:
-        conn.execute(
-            """INSERT INTO lesson_progress (user_id, lesson_number, skill, status, started_at, completed_at)
-               VALUES (?, ?, ?, 'completed', ?, ?)
-               ON CONFLICT(user_id, lesson_number, skill)
-               DO UPDATE SET status='completed', completed_at=excluded.completed_at""",
-            (user_id, lesson_number, skill, _now(), _now()),
-        )
-        conn.commit()
-
-
-def get_completed_skills(user_id: int, lesson_number: int) -> set:
-    with get_conn() as conn:
-        rows = conn.execute(
-            """SELECT skill FROM lesson_progress
-               WHERE user_id = ? AND lesson_number = ? AND status = 'completed'""",
-            (user_id, lesson_number),
-        ).fetchall()
-        return {r["skill"] for r in rows}
-
-
-def reset_lesson_progress(user_id: int, lesson_number: int):
-    with get_conn() as conn:
-        conn.execute(
-            "DELETE FROM lesson_progress WHERE user_id = ? AND lesson_number = ?",
-            (user_id, lesson_number),
-        )
-        conn.execute(
-            "DELETE FROM answers WHERE user_id = ? AND lesson_number = ?",
-            (user_id, lesson_number),
-        )
-        conn.commit()
-
-
-# ---------------------------------------------------------------------------
-# إجابات الاختيار من متعدد
-# ---------------------------------------------------------------------------
-
-def record_answer(user_id: int, lesson_number: int, skill: str, question_key: str,
-                   selected_option: str, is_correct: bool):
-    with get_conn() as conn:
-        existing = conn.execute(
-            """SELECT id, attempts FROM answers
-               WHERE user_id=? AND lesson_number=? AND skill=? AND question_key=?""",
-            (user_id, lesson_number, skill, question_key),
-        ).fetchone()
-        if existing:
-            conn.execute(
-                """UPDATE answers SET selected_option=?, is_correct=?, attempts=attempts+1, answered_at=?
-                   WHERE id=?""",
-                (selected_option, int(is_correct), _now(), existing["id"]),
-            )
-        else:
-            conn.execute(
-                """INSERT INTO answers
-                   (user_id, lesson_number, skill, question_key, selected_option, is_correct, attempts, answered_at)
-                   VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
-                (user_id, lesson_number, skill, question_key, selected_option, int(is_correct), _now()),
-            )
-        conn.commit()
-
-
-def is_question_answered_correctly(user_id: int, lesson_number: int, skill: str, question_key: str) -> bool:
-    with get_conn() as conn:
-        row = conn.execute(
-            """SELECT is_correct FROM answers
-               WHERE user_id=? AND lesson_number=? AND skill=? AND question_key=?""",
-            (user_id, lesson_number, skill, question_key),
-        ).fetchone()
-        return bool(row and row["is_correct"])
-
-
-def all_questions_answered_correctly(user_id: int, lesson_number: int, skill: str, question_keys: list) -> bool:
-    return all(
-        is_question_answered_correctly(user_id, lesson_number, skill, qk)
-        for qk in question_keys
-    )
-
-
-# ---------------------------------------------------------------------------
-# إتمام الدروس
-# ---------------------------------------------------------------------------
-
-def log_completion(user_id: int, lesson_number: int, lesson_title: str):
-    with get_conn() as conn:
-        conn.execute(
-            """INSERT INTO completions (user_id, lesson_number, lesson_title, completed_at)
-               VALUES (?, ?, ?, ?)""",
-            (user_id, lesson_number, lesson_title, _now()),
-        )
-        conn.commit()
+    return user.get("current_lesson", 1) > TOTAL_LESSONS
