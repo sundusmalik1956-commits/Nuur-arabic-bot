@@ -7,3 +7,4 @@ pillow
 flask
 pandas
 openpyxl
+python-telegram-bot[webhooks]
