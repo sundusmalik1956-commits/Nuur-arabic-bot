@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 translations.py
-كل نصوص واجهة البوت (التعليمات، الأزرار، أسماء الأيام، والرسائل) مترجمة لـ 11 لغة.
+كل نصوص واجهة البوت (التعليمات، الأزرار، أسماء الأيام، والرسائل) مترجمة لـ 11 لغة مع دعم المستويات (A0-B2).
 """
 
 from telegram import InlineKeyboardButton
@@ -65,17 +65,17 @@ TEXTS = {
         "fa": "به ربات نور خوش آمدید 🌙📖",
     },
     "intro_levels_info": {
-        "ar": "📚 يتوفر لدينا محتوى من المستوى A1 إلى B2، وسوف تُضاف باقي المستويات قريبًا.\n\n📌 يحتوي كل مستوى على 18 درسًا.\n🎁 أول 5 دروس مجانية تمامًا، وبعدها يتطلب اشتراك بقيمة 5 دولار فقط للمستوى (18 درسًا).",
-        "en": "📚 We currently offer content from level A1 to B2, and other levels will be added soon.\n\n📌 Each level contains 18 lessons.\n🎁 The first 5 lessons are completely free, after which a $5 subscription is required for the 18-lesson level.",
-        "tr": "📚 Şu anda A1'den B2'ye kadar içerik sunuyoruz ve diğer seviyeler yakında eklenecektir.\n\n📌 Her seviye 18 ders içerir.\n🎁 İlk 5 ders tamamen ücretsizdir, sonrasında 18 derslik seviye için sadece 5$ abonelik gereklidir.",
-        "fr": "📚 Nous proposons des contenus du niveau A1 à B2, et d'autres niveaux seront bientôt ajoutés.\n\n📌 Chaque niveau contient 18 leçons.\n🎁 Les 5 premières leçons sont gratuites, puis un abonnement de 5 $ est requis pour le niveau.",
-        "es": "📚 Ofrecemos contenido desde el nivel A1 hasta B2, y pronto se añadirán más niveles.\n\n📌 Cada nivel contiene 18 lecciones.\n🎁 Las primeras 5 lecciones son gratis, luego se requiere una suscripción de $5.",
-        "de": "📚 Wir bieten Inhalte von Stufe A1 bis B2 an, weitere Stufen folgen in Kürze.\n\n📌 Jede Stufe enthält 18 Lektionen.\n🎁 Die ersten 5 Lektionen sind kostenlos, danach ist ein Abo für 5$ erforderlich.",
-        "ru": "📚 Доступны уровни от A1 до B2, остальные уровни скоро появятся.\n\n📌 Каждый уровень содержит 18 уроков.\n🎁 Первые 5 уроков бесплатны, затем требуется подписка за 5 долларов.",
-        "id": "📚 Kami menyediakan konten dari level A1 hingga B2, dan level lainnya akan segera hadir.\n\n📌 Setiap level berisi 18 pelajaran.\n🎁 5 pelajaran pertama gratis, setelah itu berlangganan $5.",
-        "ur": "📚 ہمارے پاس A1 سے B2 تک مواد دستیاب ہے، باقی سطحیں جلد شامل کی جائیں گی۔\n\n📌 ہر سطح میں 18 اسباق ہیں۔\n🎁 پہلے 5 اسباق مفت ہیں، اس کے بعد 5 ڈالر کی سبسکرپشن درکار ہے۔",
-        "bn": "📚 আমাদের কাছে A1 থেকে B2 স্তরের বিষয়বস্তু রয়েছে, শীঘ্রই অন্যান্য স্তর যোগ করা হবে।\n\n📌 প্রতিটি স্তরে ১৮টি পাঠ রয়েছে।\n🎁 প্রথম ৫টি পাঠ সম্পূর্ণ বিনামূল্যে।",
-        "fa": "📚 محتوای سطح A1 تا B2 موجود است و سایر سطح‌ها به زودی اضافه خواهند شد.\n\n📌 هر سطح شامل ۱۸ درس است.\n🎁 ۵ درس اول رایگان است.",
+        "ar": "📚 يتوفر لدينا محتوى من مستوى الحروف (A0) وحتى المستويات (A1 إلى B2).\n\n📌 مستوى الحروف (A0) يحتوي على 4 دروس.\n📌 باقي المستويات (A1-B2) يحتوي كل منها على 18 درسًا.\n🎁 أول 5 دروس مجانية تمامًا، وبعدها يتطلب اشتراك بقيمة 5 دولار فقط للمستوى الكامل.",
+        "en": "📚 We offer content from letter level (A0) to levels (A1 to B2).\n\n📌 Level A0 contains 4 lessons.\n📌 Other levels (A1-B2) contain 18 lessons each.\n🎁 The first 5 lessons are completely free, after which a $5 subscription is required for the full level.",
+        "tr": "📚 Harf seviyesinden (A0) B2'ye kadar içerik sunuyoruz.\n\n📌 A0 seviyesi 4 ders içerir.\n📌 Diğer seviyeler (A1-B2) 18 ders içerir.\n🎁 İlk 5 ders tamamen ücretsizdir, sonrasında 5$ abonelik gereklidir.",
+        "fr": "📚 Nous proposons du niveau A0 à B2.\n\n📌 Le niveau A0 contient 4 leçons.\n📌 Les autres niveaux contiennent 18 leçons.\n🎁 Les 5 premières leçons sont gratuites.",
+        "es": "📚 Ofrecemos contenido desde el nivel A0 hasta B2.\n\n📌 El nivel A0 tiene 4 lecciones.\n📌 Los demás niveles tienen 18 lecciones.\n🎁 Las primeras 5 lecciones son gratis.",
+        "de": "📚 Wir bieten Inhalte von Stufe A0 bis B2.\n\n📌 Stufe A0 enthält 4 Lektionen.\n📌 Andere Stufen enthalten 18 Lektionen.\n🎁 Die ersten 5 Lektionen sind kostenlos.",
+        "ru": "📚 Доступны уровни от A0 до B2.\n\n📌 Уровень A0 содержит 4 урока.\n📌 Остальные уровни содержат по 18 уроков.\n🎁 Первые 5 уроков бесплатны.",
+        "id": "📚 Kami menyediakan konten dari level A0 hingga B2.\n\n📌 Level A0 berisi 4 pelajaran.\n📌 Level lainnya berisi 18 pelajaran.\n🎁 5 pelajaran pertama gratis.",
+        "ur": "📚 ہمارے پاس A0 سے B2 تک مواد دستیاب ہے۔\n\n📌 سطح A0 میں 4 اسباق ہیں۔\n📌 باقی سطحوں میں 18 اسباق ہیں۔\n🎁 پہلے 5 اسباق مفت ہیں۔",
+        "bn": "📚 আমাদের কাছে A0 থেকে B2 স্তরের বিষয়বস্তু রয়েছে।\n\n📌 A0 স্তরে ৪টি পাঠ রয়েছে।\n📌 অন্যান্য স্তরে ১৮টি পাঠ রয়েছে।\n🎁 প্রথম ৫টি পাঠ বিনামূল্যে।",
+        "fa": "📚 محتوای سطح A0 تا B2 موجود است.\n\n📌 سطح A0 شامل ۴ درس است.\n📌 سایر سطوح شامل ۱۸ درس هستند.\n🎁 ۵ درس اول رایگان است.",
     },
     "ask_level_selection": {
         "ar": "🎯 يرجى اختيار مستواك:\nيمكنك إجراء اختبار تحديد المستوى أولاً، أو اختيار مستواك مباشرة (أو البدء من A0 لمن لا يعرف الحروف).",
@@ -113,7 +113,7 @@ TEXTS = {
         "ru": "✅ Уровень выбран: {level}. Установим время урока:",
         "id": "✅ Level dipilih: {level}. Mari tentukan waktu pelajaran harian Anda:",
         "ur": "✅ سطح منتخب ہو گئی: {level}۔ اب اپنے روزانہ سبق کا وقت طے کریں:",
-        "bn": "✅ স্তর নির্বাচিত হয়েছে: {level}। আপনার পাঠ의 সময় নির্ধারণ করুন:",
+        "bn": "✅ স্তর নির্বাচিত হয়েছে: {level}। আপনার পাঠের সময় নির্ধারণ করুন:",
         "fa": "✅ سطح انتخاب شد: {level}. زمان درس روزانه را تعیین کنیم:",
     },
     "ask_time": {
@@ -178,7 +178,7 @@ TEXTS = {
         "ru": "👤 Пожалуйста, выберите ваш пол (чтобы направить вас в соответствующий чат):",
         "id": "👤 Silakan pilih jenis kelamin Anda (untuk mengarahkan Anda ke grup obrolan yang sesuai):",
         "ur": "👤 براہ کرم اپنی صنف منتخب کریں (آپ کو مناسب چیٹ گروپ کی طرف رہنمائی کرنے کے لیے):",
-        "bn": "👤 অনুগ্রহ করে আপনার লিঙ্গ নির্বাচন করুন (উপयुक्त চ্যাট গ্রুপে আপনাকে গাইড করার জন্য):",
+        "bn": "👤 অনুগ্রহ করে আপনার লিঙ্গ নির্বাচন করুন (উপযুক্ত চ্যাট গ্রুপে আপনাকে গাইড করার জন্য):",
         "fa": "👤 لطفاً جنسیت خود را انتخاب کنید (تا شما را به گروه چت مناسب هدایت کنیم):",
     },
     "btn_male": {
@@ -221,8 +221,8 @@ TEXTS = {
         "fa": "📋 **خلاصه ثبت‌نام شما:**\n\n👤 نام: {name}\n🎯 سطح: {level}\n⏰ زمان درس: {time}\n🗓️ روزهای استراحت: {rest_days}\n👥 گروه چت شما:\n🔗 {chat_link}\n\n🎉 برنامه شما با موفقیت تنظیم شد!",
     },
     "paywall_tribute": {
-        "ar": "🎉 لقد أتممت بنجاح الدروس المجانية المتاحة!\n\nللاستمرار في رحلة تعلم اللغة العربية وفتح المستوى الكامل (18 درسًا مقابل 5$)، يرجى اختيار خطة الاشتراك المناسبة عبر Tribute.\n\nبعد إتمام الدفع، اضغط على زر (تحقق من الاشتراك) لتفعيل حسابك فوراً.",
-        "en": "🎉 You have successfully completed the available free lessons!\n\nTo continue your Arabic learning journey and unlock the full level (18 lessons for $5), please choose the appropriate subscription plan via Tribute.\n\nAfter completing the payment, click the (Verify Subscription) button to activate your account immediately.",
+        "ar": "🎉 لقد أتممت بنجاح الدروس المجانية المتاحة!\n\nللاستمرار في رحلة تعلم اللغة العربية وفتح المستوى الكامل، يرجى اختيار خطة الاشتراك المناسبة عبر Tribute.\n\nبعد إتمام الدفع، اضغط على زر (تحقق من الاشتراك) لتفعيل حسابك فوراً.",
+        "en": "🎉 You have successfully completed the available free lessons!\n\nTo continue your Arabic learning journey and unlock the full level, please choose the appropriate subscription plan via Tribute.\n\nAfter completing the payment, click the (Verify Subscription) button to activate your account immediately.",
         "tr": "🎉 Mevcut ücretsiz dersleri başarıyla tamamladınız!\n\nArapça öğrenme yolculuğunuza devam etmek ve tam seviyenin kilidini açmak için lütfen Tribute üzerinden abone olun.",
         "fr": "🎉 Vous avez terminé les leçons gratuites !\n\nPour continuer, veuillez vous abonner via Tribute.",
         "es": "🎉 ¡Has completado las lecciones gratuitas!\n\nPara continuar, suscríbete a través de Tribute.",
@@ -241,14 +241,14 @@ TEXTS = {
     "skill_speaking": {"ar": "🔹 المحادثة", "en": "🔹 Speaking", "tr": "🔹 Konuşma", "fr": "🔹 Expression orale", "es": "🔹 Hablar", "de": "🔹 Sprechen", "ru": "🔹 Разговор", "id": "🔹 Berbicara", "ur": "🔹 بولنا", "bn": "🔹 কথা বলা", "fa": "🔹 مکالمه"},
     "skill_writing": {"ar": "🔹 الكتابة", "en": "🔹 Writing", "tr": "🔹 Yazma", "fr": "🔹 Écriture", "es": "🔹 Escritura", "de": "🔹 Schreiben", "ru": "🔹 Письмо", "id": "🔹 Menulis", "ur": "🔹 لکھنا", "bn": "🔹 লেখা", "fa": "🔹 نوشتن"},
     "correct_answer": {"ar": "✅ إجابة صحيحة!", "en": "✅ Correct!", "tr": "✅ Doğru cevap!", "fr": "✅ Correct !", "es": "✅ ¡Correcto!", "de": "✅ Richtig!", "ru": "✅ Правильно!", "id": "✅ Benar!", "ur": "✅ درست جواب!", "bn": "✅ সঠিক উত্তর!", "fa": "✅ پاسخ درست!"},
-    "wrong_answer_retry": {"ar": "❌ ليست صحيحة تمامًا. حاول مرة أخرى.", "en": "❌ Not quite. Try again.", "tr": "❌ Tamamen doğru değil. Tekrar deneyin.", "fr": "❌ Pas tout à fait. Réessayez.", "es": "❌ No exactamente. Inténtalo de nuevo.", "de": "❌ Nicht ganz. Versuchen Sie es noch einmal.", "ru": "❌ Не совсем так. Попробуйте еще раз.", "id": "❌ Kurang tepat. Coba lagi.", "ur": "❌ بالکل درست نہیں۔ دوبارہ کوشش کریں۔", "bn": "❌ ঠিক নয়। আবার চেষ্টা করুন।", "fa": "❌ کاملاً درست نیست. دوباره تلاش کنید."},
+    "wrong_answer_retry": {"ar": "❌ ليست صحيحة تمامًا. حاول مرة أخرى.", "en": "❌ Not quite. Try again.", "tr": "❌ Tamamen doğru değil. Tekrar deneyin.", "fr": "❌ Pas tout à fait. Réessayez.", "es": "❌ No exactamente. Inténtalo de nuevo.", "de": "❌ Nicht ganz. Versuchen Sie es noch einmal.", "ru": "❌ Не совсем так. Попробуйте еще раз.", "id": "❌ Kurang tepat. Coba lagi.", "ur": "❌ بالکل درست نہیں۔ دوبارہ کوشش کریں۔", "bn": "❌ ঠিক নয়। আবার চেষ্টা করুন።", "fa": "❌ کاملاً درست نیست. دوباره تلاش کنید."},
     "speaking_prompt_note": {"ar": "🎙️ أرسل إجابتك كتسجيل صوتي أو رسالة نصية.", "en": "🎙️ Send your answer as a voice or text message.", "tr": "🎙️ Cevabınızı sesli veya yazılı mesaj olarak gönderin.", "fr": "🎙️ Envoyez votre réponse sous forme de message vocal ou textuel.", "es": "🎙️ Envía tu respuesta como mensaje de voz o texto.", "de": "🎙️ Senden Sie Ihre Antwort als Sprach- oder Textnachricht.", "ru": "🎙️ Отправьте ответ голосом или текстом.", "id": "🎙️ Kirim jawaban Anda sebagai pesan suara atau teks.", "ur": "🎙️ اپنا جواب صوتی یا تحریری پیغام کے طور پر بھیجیں۔", "bn": "🎙️ আপনার উত্তর ভয়েস বা টেক্সট মেসেজ হিসেবে পাঠান।", "fa": "🎙️ پاسخ خود را به صورت پیام صوتی یا متنی ارسال کنید."},
     "writing_prompt_note": {"ar": "✍️ اكتب إجابتك وسيقوم الذكاء الاصطناعي بتصحيحها.", "en": "✍️ Write your answer and AI will correct it.", "tr": "✍️ Cevabınızı yazın, yapay zeka düzeltecektir.", "fr": "✍️ Écrivez votre réponse et l'IA la corrigera.", "es": "✍️ Escribe tu respuesta y la IA la corregirá.", "de": "✍️ Schreiben Sie Ihre Antwort und die KI korrigiert sie.", "ru": "✍️ Напишите ответ, и ИИ исправит его.", "id": "✍️ Tulis jawaban Anda dan AI akan memperbaikinya.", "ur": "✍️ اپنا جواب لکھیں اور AI اسے درست کرے گا۔", "bn": "✍️ আপনার উত্তর লিখুন এবং AI এটি সংশোধন করবে।", "fa": "✍️ پاسخ خود را بنویسید و هوش مصنوعی آن را اصلاح می‌کند."},
     "ai_analyzing": {"ar": "⏳ جارٍ تحليل إجابتك...", "en": "⏳ Analyzing your answer...", "tr": "⏳ Cevabınız analiz ediliyor...", "fr": "⏳ Analyse de votre réponse...", "es": "⏳ Analizando tu respuesta...", "de": "⏳ Analysiere Ihre Antwort...", "ru": "⏳ Анализ вашего ответа...", "id": "⏳ Menganalisis jawaban Anda...", "ur": "⏳ آپ کے جواب کا تجزیہ کیا جا رہا ہے...", "bn": "⏳ আপনার উত্তর বিশ্লেষণ করা হচ্ছে...", "fa": "⏳ در حال تحلیل پاسخ شما..."},
-    "lesson_complete": {"ar": "🎉 أحسنت! أتممت هذا الدرس بنجاح.", "en": "🎉 Well done! You completed this lesson.", "tr": "🎉 Aferin! Bu dersi başarıyla tamamladınız.", "fr": "🎉 Bravo ! Vous avez terminé cette leçon.", "es": "🎉 ¡Bien hecho! Has completado esta lección.", "de": "🎉 Gut gemacht! Sie haben diese Lektion abgeschlossen.", "ru": "🎉 Отлично! Вы завершили этот урок.", "id": "🎉 Bagus sekali! Anda telah menyelesaikan pelajaran ini.", "ur": "🎉 شاباش! آپ نے یہ سبق کامیابی سے مکمل کر لیا ہے۔", "bn": "🎉 চমৎকার! আপনি এই পাঠটি সফলভাবে সম্পন্ন করেছেন।",
+    "lesson_complete": {"ar": "🎉 أحسنت! أتممت هذا الدرس بنجاح.", "en": "🎉 Well done! You completed this lesson.", "tr": "🎉 Aferin! Bu dersi başarıyla tamamladınız.", "fr": "🎉 Bravo ! Vous avez terminé cette leçon.", "es": "🎉 ¡Bien hecho! Has completado esta lección.", "de": "🎉 Gut gemacht! Sie haben diese Lektion abgeschlossen.", "ru": "🎉 Отлично! Вы завершили этот урок.", "id": "🎉 Bagus sekali! Anda telah menyelesaikan pelajaran ini.", "ur": "🎉 شاباش! آپ نے یہ سبق کامیابی سے مکمل کر لیا ہے۔", "bn": "🎉 চমৎকার! আপনি এই পাঠটি সফলভাবে সম্পন্ন করেছেন።",
     "fa": "🎉 آفرین! شما این درس را با موفقیت به پایان رساندید."},
     "progress_title": {"ar": "📊 تقدّمك", "en": "📊 Your Progress", "tr": "📊 İlerlemeniz", "fr": "📊 Votre progression", "es": "📊 Tu progreso", "de": "📊 Ihr Fortschritt", "ru": "📊 Ваш прогресс", "id": "📊 Kemajuan Anda", "ur": "📊 آپ کی پیش رفت", "bn": "📊 আপনার অগ্রগতি", "fa": "📊 پیشرفت شما"},
-    "progress_body": {"ar": "الدروس المكتملة: {completed}/18\nالدرس الحالي: {current}", "en": "Completed: {completed}/18\nCurrent: {current}", "tr": "Tamamlanan: {completed}/18\nMevcut: {current}", "fr": "Complétées : {completed}/18\nActuelle : {current}", "es": "Completadas: {completed}/18\nActual: {current}", "de": "Abgeschlossen: {completed}/18\nAktuell: {current}", "ru": "Завершено: {completed}/18\nТекущий: {current}", "id": "Selesai: {completed}/18\nSaat ini: {current}", "ur": "مکمل شدہ: {completed}/18\nموجودہ: {current}", "bn": "সম্পন্ন: {completed}/18\nবর্তমান: {current}", "fa": "تکمیل شده: {completed}/18\nفعلی: {current}"},
+    "progress_body": {"ar": "المستوى: {level}\nالدروس المكتملة: {completed}/{total}\nالدرس الحالي: {current}", "en": "Level: {level}\nCompleted: {completed}/{total}\nCurrent: {current}", "tr": "Seviye: {level}\nTamamlanan: {completed}/{total}\nMevcut: {current}", "fr": "Niveau : {level}\nComplétées : {completed}/{total}\nActuelle : {current}", "es": "Nivel: {level}\nCompletadas: {completed}/{total}\nActual: {current}", "de": "Niveau: {level}\nAbgeschlossen: {completed}/{total}\nAktuell: {current}", "ru": "Уровень: {level}\nЗавершено: {completed}/{total}\nТекущий: {current}", "id": "Level: {level}\nSelesai: {completed}/{total}\nSaat ini: {current}", "ur": "سطح: {level}\nمکمل شدہ: {completed}/{total}\nموجودہ: {current}", "bn": "স্তর: {level}\nসম্পন্ন: {completed}/{total}\nবর্তমান: {current}", "fa": "سطح: {level}\nتکمیل شده: {completed}/{total}\nفعلی: {current}"},
     "settings_title": {"ar": "⚙️ الإعدادات", "en": "⚙️ Settings", "tr": "⚙️ Ayarlar", "fr": "⚙️ Paramètres", "es": "⚙️ Ajustes", "de": "⚙️ Einstellungen", "ru": "⚙️ Настройки", "id": "⚙️ Pengaturan", "ur": "⚙️ سیٹنگز", "bn": "⚙️ সেটিংস", "fa": "⚙️ تنظیمات"},
     "settings_change_language": {"ar": "🌐 تغيير اللغة", "en": "🌐 Change language", "tr": "🌐 Dili değiştir", "fr": "🌐 Changer de langue", "es": "🌐 Cambiar idioma", "de": "🌐 Sprache ändern", "ru": "🌐 Изменить язык", "id": "🌐 Ubah bahasa", "ur": "🌐 زبان تبدیل کریں", "bn": "🌐 ভাষা পরিবর্তন করুন", "fa": "🌐 تغییر زبان"},
     "settings_change_time": {"ar": "⏰ تغيير الوقت", "en": "⏰ Change time", "tr": "⏰ Saati değiştir", "fr": "⏰ Changer l'heure", "es": "⏰ Cambiar hora", "de": "⏰ Zeit ändern", "ru": "⏰ Изменить время", "id": "⏰ Ubah waktu", "ur": "⏰ وقت تبدیل کریں", "bn": "⏰ সময় পরিবর্তন করুন", "fa": "⏰ تغییر زمان"},
@@ -275,7 +275,6 @@ def language_codes() -> list:
 def language_keyboard_rows():
     rows = []
     for code, (name, flag) in SUPPORTED_LANGUAGES.items():
-        # تصحيح دالة إرجاع الأزرار لتكون كائنات InlineKeyboardButton صحيحة
         rows.append([InlineKeyboardButton(f"{flag} {name}", callback_data=f"lang|{code}")])
     return rows
 
