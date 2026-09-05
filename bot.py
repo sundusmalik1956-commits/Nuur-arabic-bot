@@ -2,7 +2,7 @@
 """
 bot.py
 الملف الرئيسي لتشغيل بوت تيليجرام لإدارة رحلة تعلم اللغة العربية.
-يدعم تعدد اللغات، واختار أيام الإجازة المخصصة، وتوجيه الطلاب لقروبات الدردشة.
+يدعم اختيار المستويات (A0-B2)، اختبار تحديد المستوى، أيام الإجازة، وقروبات الدردشة.
 """
 
 import logging
@@ -30,7 +30,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db.create_user_if_missing(user.id, user.username, user.first_name)
     
-    # رسالة ترحيبية واختيار اللغة
     keyboard = InlineKeyboardMarkup(language_keyboard_rows())
     welcome_text = (
         "مرحباً بك في أكاديمية نور لتعليم اللغة العربية 🌙📖\n"
@@ -68,7 +67,7 @@ async def _send_gender_picker(bot, user_id: int, lang: str):
         [InlineKeyboardButton(t("btn_female", lang), callback_data="gender|female")]
     ])
     msg_text = (
-        "👤 يرجى اختيار الجنس (لتوجيهك إلى قروب الدردشة التحفيزي المناسب):" 
+        "👤 يرجى اختيار الجنس لتوجيهك إلى قروب الدردشة التحفيزي المناسب:" 
         if lang == "ar" 
         else "👤 Please select your gender to direct you to the appropriate motivational chat group:"
     )
@@ -84,19 +83,51 @@ async def handle_gender_choice(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = user.get("language", "ar") if user else "ar"
     
     gender = query.data.split("|")[1]
-    
-    # تعيين معرف القروب بناءً على الجنس
-    if gender == "male":
-        group_id = -1004491283200
-    else:
-        group_id = -5548247537
+    group_id = -1004491283200 if gender == "male" else -5548247537
         
     db.update_user_fields(user_id, gender=gender, group_id=group_id)
     
     msg = "✅ تم حفظ الجنس." if lang == "ar" else "✅ Gender saved."
     await query.edit_message_text(text=msg)
     
-    # الخطوة التالية: اختيار أيام الإجازة بلغة الطالب
+    # الخطوة التالية: اختيار المستويات أو تحديدها
+    await _send_level_picker(context.bot, user_id, lang)
+
+
+async def _send_level_picker(bot, user_id: int, lang: str):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📝 اختبار تحديد المستوى (Placement Test)", url="https://t.example.com/placement-test")],
+        [InlineKeyboardButton("🟢 A0 (لا أعرف الحروف - 4 دروس)", callback_data="level|A0")],
+        [InlineKeyboardButton("📘 المستوى A1 (18 درس)", callback_data="level|A1"),
+         InlineKeyboardButton("📘 المستوى A2 (18 درس)", callback_data="level|A2")],
+        [InlineKeyboardButton("📙 المستوى B1 (18 درس)", callback_data="level|B1"),
+         InlineKeyboardButton("📙 المستوى B2 (18 درس)", callback_data="level|B2")]
+    ])
+    msg_text = (
+        "🎯 يرجى اختيار مستواك في اللغة العربية:\n"
+        "- إذا كنت لا تعرف الحروف تماماً، اختر (A0) المكون من 4 دروس.\n"
+        "- أو يمكنك إجراء اختبار تحديد المستوى عبر الرابط أعلاه، ثم اختيار مستواك بناءً على النتيجة."
+        if lang == "ar"
+        else "🎯 Please choose your level:\n- If you don't know the letters, choose A0 (4 lessons).\n- Or take the placement test above."
+    )
+    await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard, disable_web_page_preview=True)
+
+
+async def handle_level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
+    
+    level = query.data.split("|")[1]
+    db.update_user_fields(user_id, level=level)
+    
+    msg = f"✅ تم اختيار المستوى: {level}." if lang == "ar" else f"✅ Level selected: {level}."
+    await query.edit_message_text(text=msg)
+    
+    # الخطوة التالية: اختيار أيام الإجازة
     await _send_rest_days_picker(context.bot, user_id, lang)
 
 
@@ -105,7 +136,7 @@ async def _send_rest_days_picker(bot, user_id: int, lang: str, selected=None):
         selected = []
         context.user_data["temp_rest_days"] = selected
         
-    localized_days = get_days_list(lang) # أسماء الأيام مترجمة (الأحد إلى السبت)
+    localized_days = get_days_list(lang)
     codes = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
     keyboard_rows = []
@@ -119,7 +150,7 @@ async def _send_rest_days_picker(bot, user_id: int, lang: str, selected=None):
     msg_text = (
         "🗓️ اختر يومي إجازة في الأسبوع (لن يتم إرسال دروس فيهما):\n(اضغط على اليوم لتحديده أو إلغائه، ثم اضغط حفظ)" 
         if lang == "ar" 
-        else "🗓️ Choose your 2 rest days per week where no lessons will be sent:\n(Tap to select/deselect, then click save)"
+        else "🗓️ Choose your 2 rest days per week where no lessons will be sent:"
     )
     await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard)
 
@@ -148,11 +179,7 @@ async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_
             if len(selected) < 2:
                 selected.append(code)
             else:
-                alert_text = (
-                    "يمكنك اختيار يومي إجازة فقط كحد أقصى." 
-                    if lang == "ar" 
-                    else "You can select a maximum of 2 rest days."
-                )
+                alert_text = "يمكنك اختيار يومي إجازة فقط كحد أقصى." if lang == "ar" else "Maximum 2 rest days."
                 await query.answer(alert_text, show_alert=True)
                 return
                 
@@ -172,11 +199,7 @@ async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_
             
     elif action == "save":
         if len(selected) != 2:
-            alert_text = (
-                "الرجاء اختيار يومي إجازة بالضبط قبل الحفظ." 
-                if lang == "ar" 
-                else "Please select exactly 2 rest days before saving."
-            )
+            alert_text = "الرجاء اختيار يومي إجازة بالضبط قبل الحفظ." if lang == "ar" else "Please select exactly 2 rest days."
             await query.answer(alert_text, show_alert=True)
             return
             
@@ -186,7 +209,6 @@ async def handle_rest_days_choice(update: Update, context: ContextTypes.DEFAULT_
         msg = "✅ تم حفظ أيام الإجازة." if lang == "ar" else "✅ Rest days saved."
         await query.edit_message_text(text=msg)
         
-        # الخطوة التالية: اختيار وقت الدرس اليومي
         await _send_time_picker(context.bot, user_id, lang)
 
 
@@ -202,11 +224,7 @@ async def _send_time_picker(bot, user_id: int, lang: str):
         keyboard_rows.append(row)
         
     keyboard = InlineKeyboardMarkup(keyboard_rows)
-    msg_text = (
-        "⏰ اختر الوقت المناسب لوصول درسك اليومي:" 
-        if lang == "ar" 
-        else "⏰ Choose the time you'd like your daily lesson to arrive:"
-    )
+    msg_text = "⏰ اختر الوقت المناسب لوصول درسك اليومي:" if lang == "ar" else "⏰ Choose your daily lesson time:"
     await bot.send_message(chat_id=user_id, text=msg_text, reply_markup=keyboard)
 
 
@@ -227,18 +245,13 @@ async def handle_time_choice(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         logger.error(f"خطأ في جدولة الوقت للمستخدم {user_id}: {e}")
         
-    # جلب معلومات المستخدم لإظهار ملخص التسجيل وقروب الدردشة التحفيزي الخاص به
     updated_user = db.get_user(user_id)
     name = updated_user.get("first_name", "Student")
     level = updated_user.get("level", "A1")
     rest_days = updated_user.get("rest_days", "")
     
-    # تحديد رابط قروب الدردشة التحفيزي بناءً على القروب المختار
     group_id = updated_user.get("group_id")
-    if group_id == -1004491283200:
-        chat_link = "https://t.me/+YourMenGroupInviteLink"  # استبدله برابط دعوة قروب الرجال إذا أردت
-    else:
-        chat_link = "https://t.me/+YourWomenGroupInviteLink"  # استبدله برابط دعوة قروب النساء إذا أردت
+    chat_link = "https://t.me/+YourMenGroupInviteLink" if group_id == -1004491283200 else "https://t.me/+YourWomenGroupInviteLink"
 
     summary_text = t("registration_summary", lang).format(
         name=name,
@@ -264,10 +277,10 @@ def main():
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(handle_language_choice, pattern="^lang\\|"))
     application.add_handler(CallbackQueryHandler(handle_gender_choice, pattern="^gender\\|"))
+    application.add_handler(CallbackQueryHandler(handle_level_choice, pattern="^level\\|"))
     application.add_handler(CallbackQueryHandler(handle_rest_days_choice, pattern="^rest\\|"))
     application.add_handler(CallbackQueryHandler(handle_time_choice, pattern="^time\\|"))
     
-    # استعادة الجدولة السابقة عند الإقلاع
     restore_all_schedules(application.job_queue)
     
     PORT = int(os.environ.get("PORT", "8443"))
