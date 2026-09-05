@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 database.py
-طبقة SQLite لحفظ حالة البوت ومزامنة ملف Excel لبيانات الطلاب مع دعم اللغة وأيام الإجازة.
+طبقة SQLite لحفظ حالة البوت ومزامنة ملف Excel لبيانات الطلاب مع دعم المستويات (A0-B2) واللغة وأيام الإجازة.
 """
 
 import sqlite3
@@ -16,8 +16,15 @@ logger = logging.getLogger(__name__)
 DB_PATH = os.path.join(os.path.dirname(__file__), "noor_bot.db")
 EXCEL_PATH = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
 
-TOTAL_LESSONS = 18
+DEFAULT_TOTAL_LESSONS = 18
 FREE_LESSONS = 5
+
+
+def get_total_lessons_for_level(level: str) -> int:
+    """إرجاع عدد الدروس الإجمالي بناءً على المستوى (A0 لديه 4 دروس، والبقية 18 درساً)"""
+    if level == "A0":
+        return 4
+    return 18
 
 
 @contextmanager
@@ -38,6 +45,7 @@ def init_db():
                 username TEXT,
                 first_name TEXT,
                 language TEXT DEFAULT 'ar',
+                level TEXT DEFAULT 'A1',
                 rest_days TEXT DEFAULT 'Thu,Fri',
                 gender TEXT,
                 group_id INTEGER,
@@ -103,7 +111,7 @@ def _now():
 
 
 def sync_student_to_excel(user_id: int):
-    """مزامنة بيانات الطالب وتضمين اللغة وأيام الإجازة والجنس في ملف الإكسل تلقائياً"""
+    """مزامنة بيانات الطالب وتضمين المستوى، اللغة، أيام الإجازة والجنس في ملف الإكسل تلقائياً"""
     try:
         user = get_user(user_id)
         if not user:
@@ -114,6 +122,7 @@ def sync_student_to_excel(user_id: int):
             "username": user.get("username", ""),
             "first_name": user.get("first_name", ""),
             "language": user.get("language", "ar"),
+            "level": user.get("level", "A1"),
             "rest_days": user.get("rest_days", "Thu,Fri"),
             "gender": user.get("gender", ""),
             "lesson_time": user.get("lesson_time", ""),
@@ -161,8 +170,8 @@ def get_all_scheduled_users():
 def create_user_if_missing(user_id: int, username: str = None, first_name: str = None):
     with get_conn() as conn:
         conn.execute(
-            """INSERT OR IGNORE INTO users (user_id, username, first_name, language, created_at, updated_at)
-               VALUES (?, ?, ?, 'ar', ?, ?)""",
+            """INSERT OR IGNORE INTO users (user_id, username, first_name, language, level, created_at, updated_at)
+               VALUES (?, ?, ?, 'ar', 'A1', ?, ?)""",
             (user_id, username, first_name, _now(), _now()),
         )
         conn.commit()
@@ -214,4 +223,6 @@ def is_trial_active(user: dict) -> bool:
 
 
 def program_finished(user: dict) -> bool:
-    return user.get("current_lesson", 1) > TOTAL_LESSONS
+    level = user.get("level", "A1")
+    total = get_total_lessons_for_level(level)
+    return user.get("current_lesson", 1) > total
