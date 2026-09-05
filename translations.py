@@ -111,7 +111,7 @@ TEXTS = {
         "ru": "✅ Уровень выбран: {level}. Установим время урока:",
         "id": "✅ Level dipilih: {level}. Mari tentukan waktu pelajaran harian Anda:",
         "ur": "✅ سطح منتخب ہو گئی: {level}۔ اب اپنے روزانہ سبق کا وقت طے کریں:",
-        "bn": "✅ স্তর নির্বাচিত হয়েছে: {level}। আপনার পাঠের সময় নির্ধারণ করুন:",
+        "bn": "✅ স্তর নির্বাচিত হয়েছে: {level}। আপনার পাঠ의 সময় নির্ধারণ করুন:",
         "fa": "✅ سطح انتخاب شد: {level}. زمان درس روزانه را تعیین کنیم:",
     },
     "ask_time": {
@@ -241,9 +241,10 @@ TEXTS = {
     "correct_answer": {"ar": "✅ إجابة صحيحة!", "en": "✅ Correct!", "tr": "✅ Doğru cevap!", "fr": "✅ Correct !", "es": "✅ ¡Correcto!", "de": "✅ Richtig!", "ru": "✅ Правильно!", "id": "✅ Benar!", "ur": "✅ درست جواب!", "bn": "✅ সঠিক উত্তর!", "fa": "✅ پاسخ درست!"},
     "wrong_answer_retry": {"ar": "❌ ليست صحيحة تمامًا. حاول مرة أخرى.", "en": "❌ Not quite. Try again.", "tr": "❌ Tamamen doğru değil. Tekrar deneyin.", "fr": "❌ Pas tout à fait. Réessayez.", "es": "❌ No exactamente. Inténtalo de nuevo.", "de": "❌ Nicht ganz. Versuchen Sie es noch einmal.", "ru": "❌ Не совсем так. Попробуйте еще раз.", "id": "❌ Kurang tepat. Coba lagi.", "ur": "❌ بالکل درست نہیں۔ دوبارہ کوشش کریں۔", "bn": "❌ ঠিক নয়। আবার চেষ্টা করুন۔", "fa": "❌ کاملاً درست نیست. دوباره تلاش کنید."},
     "speaking_prompt_note": {"ar": "🎙️ أرسل إجابتك كتسجيل صوتي أو رسالة نصية.", "en": "🎙️ Send your answer as a voice or text message.", "tr": "🎙️ Cevabınızı sesli veya yazılı mesaj olarak gönderin.", "fr": "🎙️ Envoyez votre réponse sous forme de message vocal ou textuel.", "es": "🎙️ Envía tu respuesta como mensaje de voz o texto.", "de": "🎙️ Senden Sie Ihre Antwort als Sprach- oder Textnachricht.", "ru": "🎙️ Отправьте ответ голосом или текстом.", "id": "🎙️ Kirim jawaban Anda sebagai pesan suara atau teks.", "ur": "🎙️ اپنا جواب صوتی یا تحریری پیغام کے طور پر بھیجیں۔", "bn": "🎙️ আপনার উত্তর ভয়েস বা টেক্সট মেসেজ হিসেবে পাঠান।", "fa": "🎙️ پاسخ خود را به صورت پیام صوتی یا متنی ارسال کنید."},
-    "writing_prompt_note": {"ar": "✍️ اكتب إجابتك وسيقوم الذكاء الاصطناعي بتصحيحها.", "en": "✍️ Write your answer and AI will correct it.", "tr": "✍️ Cevabınızı yazın, yapay zeka düzeltecektir.", "fr": "✍️ Écrivez votre réponse et l'IA la corrigera.", "es": "✍️ Escribe tu respuesta y la IA la corregirá.", "de": "✍️ Schreiben Sie Ihre Antwort und die KI korrigiert sie.", "ru": "✍️ Напишите ответ, и ИИ исправит его.", "id": "✍️ Tulis jawaban Anda dan AI akan memperbaikinya.", "ur": "✍️ اپنا جواب لکھیں اور AI اسے درست کرے گا۔", "bn": "✍️ আপনার উত্তর লিখুন এবং AI এটি সংশোধন করবে।", "fa": "✍️ پاسخ خود را بنویسید و هوش مصنوعی آن را اصلاح می‌کند."},
+    "writing_prompt_note": {"ar": "✍️ اكتب إجابتك وسيقوم الذكاء الاصطناعي بتصحيحها.", "en": "✍️ Write your answer and AI will correct it.", "tr": "✍️ Cevabınızı yazın, yapay zeka düzeltecektir.", "fr": "✍️ Écrivez votre réponse et l'IA la corrigera.", "es": "✍️ Escribe tu respuesta y la IA la corregirá.", "de": "✍️ Schreiben Sie Ihre Antwort und die KI korrigiert sie.", "ru": "✍️ Напишите ответ, и ИИ исправит его.", "id": "✍️ Tulis jawaban Anda dan AI akan memperbaikinya.", "ur": "✍️ اپنا جواب لکھیں اور AI اسے درست کرے گا۔", "bn": "✍️ আপনার উত্তর লিখুন এবং AI এটি সংশোধন করবে۔", "fa": "✍️ پاسخ خود را بنویسید و هوش مصنوعی آن را اصلاح می‌کند."},
     "ai_analyzing": {"ar": "⏳ جارٍ تحليل إجابتك...", "en": "⏳ Analyzing your answer...", "tr": "⏳ Cevabınız analiz ediliyor...", "fr": "⏳ Analyse de votre réponse...", "es": "⏳ Analizando tu respuesta...", "de": "⏳ Analysiere Ihre Antwort...", "ru": "⏳ Анализ вашего ответа...", "id": "⏳ Menganalisis jawaban Anda...", "ur": "⏳ آپ کے جواب کا تجزیہ کیا جا رہا ہے...", "bn": "⏳ আপনার উত্তর বিশ্লেষণ করা হচ্ছে...", "fa": "⏳ در حال تحلیل پاسخ شما..."},
-    "lesson_complete": {"ar": "🎉 أحسنت! أتممت هذا الدرس بنجاح.", "en": "🎉 Well done! You completed this lesson.", "tr": "🎉 Aferin! Bu dersi başarıyla tamamladınız.", "fr": "🎉 Bravo ! Vous avez terminé cette leçon.", "es": "🎉 ¡Bien hecho! Has completado esta lección.", "de": "🎉 Gut gemacht! Sie haben diese Lektion abgeschlossen.", "ru": "🎉 Отлично! Вы завершили этот урок.", "id": "🎉 Bagus sekali! Anda telah menyelesaikan pelajaran ini.", "ur": "🎉 شاباش! آپ نے یہ سبق کامیابی سے مکمل کر لیا ہے۔", "bn": "🎉 চমৎকার! আপনি এই পাঠটি সফলভাবে সম্পন্ন করেছেন।", "fa": "🎉 آفرین! شما این درس را با موفقیت به پایان رساندید."},
+    "lesson_complete": {"ar": "🎉 أحسنت! أتممت هذا الدرس بنجاح.", "en": "🎉 Well done! You completed this lesson.", "tr": "🎉 Aferin! Bu dersi başarıyla tamamladınız.", "fr": "🎉 Bravo ! Vous avez terminé cette leçon.", "es": "🎉 ¡Bien hecho! Has completado esta lección.", "de": "🎉 Gut gemacht! Sie haben diese Lektion abgeschlossen.", "ru": "🎉 Отлично! Вы завершили этот урок.", "id": "🎉 Bagus sekali! Anda telah menyelesaikan pelajaran ini.", "ur": "🎉 شاباش! آپ نے یہ سبق کامیابی سے مکمل کر لیا ہے۔", "bn": "🎉 চমৎকার! আপনি এই পাঠটি সফলভাবে সম্পন্ন করেছেন።",
+    "fa": "🎉 آفرین! شما این درس را با موفقیت به پایان رساندید."},
     "progress_title": {"ar": "📊 تقدّمك", "en": "📊 Your Progress", "tr": "📊 İlerlemeniz", "fr": "📊 Votre progression", "es": "📊 Tu progreso", "de": "📊 Ihr Fortschritt", "ru": "📊 Ваш прогресс", "id": "📊 Kemajuan Anda", "ur": "📊 آپ کی پیش رفت", "bn": "📊 আপনার অগ্রগতি", "fa": "📊 پیشرفت شما"},
     "progress_body": {"ar": "الدروس المكتملة: {completed}/18\nالدرس الحالي: {current}", "en": "Completed: {completed}/18\nCurrent: {current}", "tr": "Tamamlanan: {completed}/18\nMevcut: {current}", "fr": "Complétées : {completed}/18\nActuelle : {current}", "es": "Completadas: {completed}/18\nActual: {current}", "de": "Abgeschlossen: {completed}/18\nAktuell: {current}", "ru": "Завершено: {completed}/18\nТекущий: {current}", "id": "Selesai: {completed}/18\nSaat ini: {current}", "ur": "مکمل شدہ: {completed}/18\nموجودہ: {current}", "bn": "সম্পন্ন: {completed}/18\nবর্তমান: {current}", "fa": "تکمیل شده: {completed}/18\nفعلی: {current}"},
     "settings_title": {"ar": "⚙️ الإعدادات", "en": "⚙️ Settings", "tr": "⚙️ Ayarlar", "fr": "⚙️ Paramètres", "es": "⚙️ Ajustes", "de": "⚙️ Einstellungen", "ru": "⚙️ Настройки", "id": "⚙️ Pengaturan", "ur": "⚙️ سیٹنگز", "bn": "⚙️ সেটিংস", "fa": "⚙️ تنظیمات"},
@@ -262,6 +263,11 @@ def t(key: str, lang: str = DEFAULT_LANG, **kwargs) -> str:
     if kwargs:
         text = text.format(**kwargs)
     return text
+
+
+def language_codes() -> list:
+    """إرجاع قائمة رموز اللغات المدعومة"""
+    return list(SUPPORTED_LANGUAGES.keys())
 
 
 def language_keyboard_rows():
