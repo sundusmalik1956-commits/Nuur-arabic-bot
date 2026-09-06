@@ -1,24 +1,41 @@
-# -*- coding: utf-8 -*-
-"""
-config.py
-إعدادات وثوابت المشروع التي ليست أسرارًا حساسة (التوكن والمفاتيح تبقى في .env فقط).
-"""
-
 import os
+from dotenv import load_dotenv
 
-# معرّفات قروبات المناقشة والإنجازات
-# قروب الرجال (المضاف مسبقاً)
-MEN_GROUP_ID = int(os.environ.get("MEN_GROUP_ID", "-1004491283200"))
-# قروب النساء الجديد
-WOMEN_GROUP_ID = int(os.environ.get("WOMEN_GROUP_ID", "-5548247537"))
+load_dotenv()
 
-# للاستواقة التوافقية مع الكود القديم إن وجد
-ACHIEVEMENT_GROUP_ID = MEN_GROUP_ID
-
-# أكثر من 20 وقتاً مختلفاً ومتاحاً ليختار منها الطالب بحرية
-AVAILABLE_TIMES = [
-    "00:00", "01:00", "02:00", "03:00", "04:00", "05:00",
-    "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
-    "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
-    "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"
-]
+class Config:
+    BOT_TOKEN = os.getenv('BOT_TOKEN')
+    GEMINI_API_KEYS = [
+        os.getenv('GEMINI_API_KEY_1'),
+        os.getenv('GEMINI_API_KEY_2'),
+        os.getenv('GEMINI_API_KEY_3')
+    ]
+    ADMIN_ID = int(os.getenv('ADMIN_ID'))
+    PAYMENT_LINK = os.getenv('PAYMENT_LINK')
+    WOMEN_GROUP = os.getenv('WOMEN_GROUP')
+    MEN_GROUP = os.getenv('MEN_GROUP')
+    LEVEL_TEST_BOT = os.getenv('LEVEL_TEST_BOT')
+    
+    # إعدادات الدروس
+    LESSONS_PER_LEVEL = 18
+    FREE_LESSONS = 5
+    SUBSCRIPTION_PRICE = 5
+    LEVELS = ['A0', 'A1', 'A2', 'B1', 'B2']
+    
+    # جدول الأوقات المتاحة (24 ساعة)
+    AVAILABLE_TIMES = [f"{i:02d}:00" for i in range(24)]
+    
+    # أيام الأسبوع
+    DAYS_OF_WEEK = {
+        'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        'ar': ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'],
+        'tr': ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'],
+        'es': ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
+        'fr': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+        'ru': ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'],
+        'zh': ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+        'ur': ['پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ', 'اتوار'],
+        'hi': ['सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार', 'रविवार'],
+        'fa': ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه'],
+        'id': ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
+    }
