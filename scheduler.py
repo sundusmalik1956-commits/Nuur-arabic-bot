@@ -24,7 +24,7 @@ def get_user_study_days(user_id: int) -> tuple:
     user = db.get_user(user_id)
     rest_days_str = user.get("rest_days") if user else None
     
-    # إذا لم يختار الطالب أيام إجازة بعد، نعتبر الافتراضي الخميس (3) والجمعة (4)
+    # إذا لم يختار الطالب أيام إجازة بعد، نعتبر الافتراضي الجمعة (4) والسبت (5) أو حسب الرغبة (الافتراضي هنا Thu, Fri)
     if not rest_days_str:
         rest_list = ["Thu", "Fri"]
     else:
@@ -44,7 +44,8 @@ async def _daily_job(context):
         return
     if not db.is_trial_active(user):
         from translations import t
-        await context.bot.send_message(chat_id=user_id, text=t("trial_ended", user.get("language", "ar")))
+        # استخدام مفتاح الدفع المعتمد في الـ Paywall بدلاً من trial_ended غير الموجود في ملف الترجمات
+        await context.bot.send_message(chat_id=user_id, text=t("paywall_tribute", user.get("language", "ar")))
         return
     if db.program_finished(user):
         return
@@ -92,5 +93,6 @@ def next_study_moment_is_today(user_id: int, hour: int, minute: int) -> bool:
     if now.weekday() not in study_days:
         return False
         
-    target = now.index_replace = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    # تصحيح الخطأ الإملائي في دالة الوقت (استخدام replace مباشرة بدلاً من index_replace غير الموجودة)
+    target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     return target > now
