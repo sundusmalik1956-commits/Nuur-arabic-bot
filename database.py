@@ -1,228 +1,147 @@
-# -*- coding: utf-8 -*-
-"""
-database.py
-طبقة SQLite لحفظ حالة البوت ومزامنة ملف Excel لبيانات الطلاب مع دعم المستويات (A0-B2) واللغة وأيام الإجازة.
-"""
-
 import sqlite3
-import os
-import logging
+import json
 from datetime import datetime
-from contextlib import contextmanager
-import pandas as pd
+from typing import Dict, List, Optional
 
-logger = logging.getLogger(__name__)
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "noor_bot.db")
-EXCEL_PATH = os.path.join(os.path.dirname(__file__), "students_data.xlsx")
-
-DEFAULT_TOTAL_LESSONS = 18
-FREE_LESSONS = 5
-
-
-def get_total_lessons_for_level(level: str) -> int:
-    """إرجاع عدد الدروس الإجمالي بناءً على المستوى (A0 لديه 4 دروس، والبقية 18 درساً)"""
-    if level == "A0":
-        return 4
-    return 18
-
-
-@contextmanager
-def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-
-def init_db():
-    with get_conn() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                language TEXT DEFAULT 'ar',
-                level TEXT DEFAULT 'A1',
-                rest_days TEXT DEFAULT 'Thu,Fri',
-                gender TEXT,
-                group_id INTEGER,
-                lesson_time TEXT,
-                current_lesson INTEGER DEFAULT 1,
-                completed_lessons INTEGER DEFAULT 0,
-                active INTEGER DEFAULT 1,
-                speaking_score REAL,
-                writing_score REAL,
-                certificate_status TEXT DEFAULT 'none',
-                certificate_id TEXT,
-                certificate_url TEXT,
-                certificate_date TEXT,
-                subscription_status TEXT DEFAULT 'trial',
-                subscription_date TEXT,
-                last_lesson_date TEXT,
-                timezone TEXT,
-                created_at TEXT,
-                updated_at TEXT,
-                pending_skill TEXT DEFAULT NULL
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS lesson_progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                lesson_number INTEGER,
-                skill TEXT,
-                status TEXT DEFAULT 'in_progress',
-                started_at TEXT,
-                completed_at TEXT,
-                UNIQUE(user_id, lesson_number, skill)
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS answers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                lesson_number INTEGER,
-                skill TEXT,
-                question_key TEXT,
-                selected_option TEXT,
-                is_correct INTEGER,
-                attempts INTEGER DEFAULT 1,
-                answered_at TEXT
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS completions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                lesson_number INTEGER,
-                lesson_title TEXT,
-                completed_at TEXT
-            )
-        """)
-        conn.commit()
-    logger.info("قاعدة البيانات جاهزة.")
-
-
-def _now():
-    return datetime.utcnow().isoformat()
-
-
-def sync_student_to_excel(user_id: int):
-    """مزامنة بيانات الطالب وتضمين المستوى، اللغة، أيام الإجازة والجنس في ملف الإكسل تلقائياً"""
-    try:
-        user = get_user(user_id)
-        if not user:
-            return
-        
-        record = {
-            "user_id": str(user.get("user_id")),
-            "username": user.get("username", ""),
-            "first_name": user.get("first_name", ""),
-            "language": user.get("language", "ar"),
-            "level": user.get("level", "A1"),
-            "rest_days": user.get("rest_days", "Thu,Fri"),
-            "gender": user.get("gender", ""),
-            "lesson_time": user.get("lesson_time", ""),
-            "current_lesson": user.get("current_lesson", 1),
-            "completed_lessons": user.get("completed_lessons", 0),
-            "subscription_status": user.get("subscription_status", "trial"),
-            "updated_at": user.get("updated_at", _now())
-        }
-        
-        if os.path.exists(EXCEL_PATH):
-            df = pd.read_excel(EXCEL_PATH)
-            df["user_id"] = df["user_id"].astype(str)
-            if record["user_id"] in df["user_id"].values:
-                for k, v in record.items():
-                    df.loc[df["user_id"] == record["user_id"], k] = v
-            else:
-                new_row = pd.DataFrame([record])
-                df = pd.concat([df, new_row], ignore_index=True)
-        else:
-            df = pd.DataFrame([record])
-            
-        df.to_excel(EXCEL_PATH, index=False)
-    except Exception as e:
-        logger.error(f"خطأ أثناء مزامنة بيانات الطالب مع الإكسل: {e}")
-
-
-def get_user(user_id: int):
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
-        return dict(row) if row else None
-
-
-def get_all_users():
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM users").fetchall()
-        return {row["user_id"]: dict(row) for row in rows}
-
-
-def get_all_scheduled_users():
-    with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM users WHERE lesson_time IS NOT NULL AND active = 1").fetchall()
-        return [dict(row) for row in rows]
-
-
-def create_user_if_missing(user_id: int, username: str = None, first_name: str = None):
-    with get_conn() as conn:
-        conn.execute(
-            """INSERT OR IGNORE INTO users (user_id, username, first_name, language, level, created_at, updated_at)
-               VALUES (?, ?, ?, 'ar', 'A1', ?, ?)""",
-            (user_id, username, first_name, _now(), _now()),
-        )
-        conn.commit()
-    sync_student_to_excel(user_id)
-
-
-def update_user_fields(user_id: int, **fields):
-    if not fields:
-        return
-    fields["updated_at"] = _now()
-    columns = ", ".join(f"{k} = ?" for k in fields)
-    values = list(fields.values()) + [user_id]
-    with get_conn() as conn:
-        conn.execute(f"UPDATE users SET {columns} WHERE user_id = ?", values)
-        conn.commit()
-    sync_student_to_excel(user_id)
-
-
-def set_language(user_id: int, language: str):
-    update_user_fields(user_id, language=language)
-
-
-def set_lesson_time(user_id: int, time_str: str):
-    update_user_fields(user_id, lesson_time=time_str)
-
-
-def advance_to_next_lesson(user_id: int):
-    with get_conn() as conn:
-        conn.execute(
-            """UPDATE users
-               SET current_lesson = current_lesson + 1,
-                   completed_lessons = completed_lessons + 1,
-                   updated_at = ?
-               WHERE user_id = ?""",
-            (_now(), user_id),
-        )
-        conn.commit()
-    sync_student_to_excel(user_id)
-
-
-def set_subscription_status(user_id: int, status: str):
-    update_user_fields(user_id, subscription_status=status, subscription_date=_now())
-
-
-def is_trial_active(user: dict) -> bool:
-    if user.get("subscription_status") == "active":
-        return True
-    return user.get("current_lesson", 1) <= FREE_LESSONS
-
-
-def program_finished(user: dict) -> bool:
-    level = user.get("level", "A1")
-    total = get_total_lessons_for_level(level)
-    return user.get("current_lesson", 1) > total
+class Database:
+    def __init__(self, db_path='users.db'):
+        self.db_path = db_path
+        self.init_db()
+    
+    def init_db(self):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    first_name TEXT,
+                    last_name TEXT,
+                    language TEXT DEFAULT 'ar',
+                    level TEXT,
+                    gender TEXT,
+                    lesson_time TEXT,
+                    days_off TEXT,
+                    current_lesson INTEGER DEFAULT 0,
+                    is_subscribed BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_progress (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    lesson_number INTEGER,
+                    completed BOOLEAN DEFAULT FALSE,
+                    completed_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    user_id INTEGER PRIMARY KEY,
+                    settings TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            ''')
+            conn.commit()
+    
+    def get_user(self, user_id: int) -> Optional[Dict]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+            row = cursor.fetchone()
+            if row:
+                columns = [description[0] for description in cursor.description]
+                return dict(zip(columns, row))
+            return None
+    
+    def create_user(self, user_id: int, username: str = None, first_name: str = None, last_name: str = None):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO users (user_id, username, first_name, last_name)
+                VALUES (?, ?, ?, ?)
+            ''', (user_id, username, first_name, last_name))
+            conn.commit()
+    
+    def update_user(self, user_id: int, **kwargs):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            fields = []
+            values = []
+            for key, value in kwargs.items():
+                if key in ['username', 'first_name', 'last_name', 'language', 'level', 'gender', 'lesson_time', 'days_off', 'current_lesson', 'is_subscribed']:
+                    if key == 'days_off' and isinstance(value, list):
+                        value = json.dumps(value)
+                    fields.append(f"{key} = ?")
+                    values.append(value)
+            if fields:
+                values.append(user_id)
+                query = f"UPDATE users SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
+                cursor.execute(query, values)
+                conn.commit()
+    
+    def get_user_settings(self, user_id: int) -> Dict:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT settings FROM user_settings WHERE user_id = ?', (user_id,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                return json.loads(row[0])
+            return {}
+    
+    def save_user_settings(self, user_id: int, settings: Dict):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO user_settings (user_id, settings)
+                VALUES (?, ?)
+            ''', (user_id, json.dumps(settings)))
+            conn.commit()
+    
+    def get_all_users(self) -> List[Dict]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users')
+            rows = cursor.fetchall()
+            columns = [description[0] for description in cursor.description]
+            users = []
+            for row in rows:
+                user = dict(zip(columns, row))
+                if user.get('days_off'):
+                    user['days_off'] = json.loads(user['days_off'])
+                users.append(user)
+            return users
+    
+    def get_users_by_time(self, hour: int, minute: int) -> List[Dict]:
+        time_str = f"{hour:02d}:{minute:02d}"
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE lesson_time = ?', (time_str,))
+            rows = cursor.fetchall()
+            columns = [description[0] for description in cursor.description]
+            users = []
+            for row in rows:
+                user = dict(zip(columns, row))
+                if user.get('days_off'):
+                    user['days_off'] = json.loads(user['days_off'])
+                users.append(user)
+            return users
+    
+    def record_lesson_completion(self, user_id: int, lesson_number: int):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO user_progress (user_id, lesson_number, completed, completed_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (user_id, lesson_number, True))
+            conn.commit()
+    
+    def get_completed_lessons(self, user_id: int) -> List[int]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT lesson_number FROM user_progress WHERE user_id = ? AND completed = TRUE', (user_id,))
+            rows = cursor.fetchall()
+            return [row[0] for row in rows]
