@@ -57,8 +57,46 @@ async def handle_language_choice(update: Update, context: ContextTypes.DEFAULT_T
     msg = "✅ تم حفظ لغتك بنجاح." if lang_code == "ar" else "✅ Language saved successfully."
     await query.edit_message_text(text=msg)
     
-    # الخطوة التالية: اختيار الجنس أولاً لتوجيهه للقروب المناسب
-    await _send_gender_picker(context.bot, user_id, lang_code)
+    # الخطوة التالية: عرض الرسالة التعريفية الشاملة لمنهج أكاديمية نور
+    await _send_academy_intro(context.bot, user_id, lang_code)
+
+
+async def _send_academy_intro(bot, user_id: int, lang: str):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("التالي / Next ➡️", callback_data="intro|next")]
+    ])
+    intro_text = (
+        "🌙 **مرحباً بك في أكاديمية نور لتعلم اللغة العربية!**\n\n"
+        "تم تصميم منهجنا بعناية ليناسب جميع المستويات:\n"
+        "🔹 **المستويات المتاحة:** من (A1) وحتى (B2)، بالإضافة إلى مستوى (A0) للمبتدئين تماماً.\n"
+        "📚 **محتوى المستويات:** يتضمن كل مستوى أساسي **18 درساً** منظماً ومبسطاً.\n"
+        "🎁 **هدية البداية:** أول **5 دروس مجانية تماماً** لتخوض التجربة بنفسك!\n"
+        "💎 **الاشتراك الكامل:** يمكنك استكمال الرحلة وفتح جميع محتويات ومستويات الأكاديمية لاحقاً مقابل **5 دولار** فقط.\n\n"
+        "اضغط على الزر أدناه لمتابعة إعداد حسابك وتحديد مستواك وجدولك الدراسي:"
+        if lang == "ar"
+        else
+        "🌙 **Welcome to Nour Arabic Academy for Learning Arabic!**\n\n"
+        "Our curriculum is carefully designed to fit all levels:\n"
+        "🔹 **Available Levels:** From (A1) to (B2), plus level (A0) for absolute beginners.\n"
+        "📚 **Content:** Each main level includes **18 structured and simplified lessons**.\n"
+        "🎁 **Starter Gift:** The first **5 lessons are completely free** for you to try!\n"
+        "💎 **Full Access:** You can continue your journey and unlock all academy levels later for just **$5**.\n\n"
+        "Click the button below to continue setting up your account and choose your level and study schedule:"
+    )
+    await bot.send_message(chat_id=user_id, text=intro_text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+async def handle_intro_next(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user = db.get_user(user_id)
+    lang = user.get("language", "ar") if user else "ar"
+    
+    await query.message.delete()
+    # الخطوة التالية بعد الرسالة التعريفية: اختيار الجنس لتوجيهه للقروب المناسب
+    await _send_gender_picker(context.bot, user_id, lang)
 
 
 async def _send_gender_picker(bot, user_id: int, lang: str):
@@ -281,6 +319,7 @@ def main():
     
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CallbackQueryHandler(handle_language_choice, pattern="^lang\\|"))
+    application.add_handler(CallbackQueryHandler(handle_intro_next, pattern="^intro\\|next$"))
     application.add_handler(CallbackQueryHandler(handle_gender_choice, pattern="^gender\\|"))
     application.add_handler(CallbackQueryHandler(handle_level_choice, pattern="^level\\|"))
     application.add_handler(CallbackQueryHandler(handle_rest_days_choice, pattern="^rest\\|"))
