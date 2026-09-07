@@ -1,184 +1,123 @@
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime, timedelta
-import pytz
-from database import Database
-from lessons import lessons_manager
-import logging
+# -*- coding: utf-8 -*-
+"""
+scheduler.py
+جدولة إرسال الدرس اليومي عبر JobQueue (لا asyncio.sleep، لا مهام معلّقة).
+كل طالب يختار يومي إجازته الأسبوعية بحرية (وليسا يومين ثابتين لكل الطلاب) —
+لذلك نحسب days= المسموح بها لـ run_daily من بيانات ذلك الطالب في قاعدة البيانات
+عند كل جدولة، ونعيد الجدولة عند تغييره لأيام إجازته.
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+ترقيم PTB/APScheduler لـ run_daily(days=...) يطابق datetime.weekday():
+0=الاثنين 1=الثلاثاء 2=الأربعاء 3=الخميس 4=الجمعة 5=السبت 6=الأحد
+"""
 
-class LessonScheduler:
-    def __init__(self, bot_instance):
-        self.scheduler = BackgroundScheduler()
-        self.db = Database()
-        self.bot = bot_instance
-        self._setup_jobs()
-    
-    def _setup_jobs(self):
-        """إعداد المهام المجدولة"""
-        # جدولة مهمة كل دقيقة للتحقق من الدروس المستحقة
-        self.scheduler.add_job(
-            self.check_lessons,
-            CronTrigger(minute='*'),  # كل دقيقة
-            id='check_lessons',
-            replace_existing=True
-        )
-        
-        # جدولة مهمة كل يوم للتنظيف
-        self.scheduler.add_job(
-            self.cleanup,
-            CronTrigger(hour=3, minute=0),  # الساعة 3 صباحاً
-            id='cleanup',
-            replace_existing=True
-        )
-        
-        # بدء الجدولة
-        self.scheduler.start()
-        logger.info("Scheduler started successfully")
-    
-    def check_lessons(self):
-        """التحقق من الدروس المستحقة لكل مستخدم"""
-        now = datetime.now()
-        current_time = now.strftime("%H:%M")
-        current_day = now.strftime("%A")  # يوم باللغة الإنجليزية
-        
+from datetime import time as dtime, datetime
+import database as db
+from lesson_engine import send_lesson
+
+ALL_WEEKDAYS = (0, 1, 2, 3, 4, 5, 6)
+
+
+def _job_name(user_id: int) -> str:
+    return f"daily_lesson_{user_id}"
+
+
+def _study_days_for_user(user: dict) -> tuple:
+    """أيام الأسبوع المسموح بإرسال الدرس فيها لهذا الطالب تحديدًا (كل الأسبوع ما عدا يومي إجازته)."""
+    vacation = {user.get("vacation_day_1"), user.get("vacation_day_2")}
+    vacation.discard(None)
+    return tuple(d for d in ALL_WEEKDAYS if d not in vacation)
+
+
+async def _daily_job(context):
+    user_id = context.job.data["user_id"]
+    user = db.get_user(user_id)
+    if not user or not user.get("active", 1):
+        return
+    if not user.get("level"):
+        return  # لم يُكمل التسجيل بعد
+    if _already_sent_today(user):
+        return  # يمنع إرسالاً مضاعفًا لو تصادف run_once (اليوم) مع أول تشغيل لـ run_daily في نفس اليوم
+    if not db.is_trial_active(user):
+        from translations import t
+        await context.bot.send_message(chat_id=user_id, text=t("trial_ended", user.get("language", "ar")))
+        return
+    if db.program_finished(user):
+        return
+    await send_lesson(
+        context.bot, user_id, user.get("language", "ar"), user["level"], user["current_lesson"], context,
+    )
+
+
+def _already_sent_today(user: dict) -> bool:
+    last = user.get("last_lesson_date")
+    if not last:
+        return False
+    try:
+        last_dt = datetime.fromisoformat(last)
+    except ValueError:
+        return False
+    return last_dt.date() == datetime.utcnow().date()
+
+
+def schedule_daily_lesson(job_queue, user_id: int, hour: int, minute: int):
+    """يجدول الإرسال اليومي المتكرر بناءً على أيام إجازة هذا الطالب المحفوظة حاليًا في قاعدة
+    البيانات. لا يُرسل شيئًا اليوم بحد ذاته — استخدمي trigger_first_lesson_if_today()
+    لإرسال أول درس فورًا إن كان يستحق ذلك اليوم. يجب استدعاؤها أيضًا عند تغيير أيام
+    الإجازة أو وقت الدرس لإعادة بناء الجدولة بالقيم الجديدة."""
+    remove_daily_lesson(job_queue, user_id)
+    user = db.get_user(user_id)
+    study_days = _study_days_for_user(user) if user else ALL_WEEKDAYS
+    job_queue.run_daily(
+        _daily_job,
+        time=dtime(hour=hour, minute=minute),
+        days=study_days,
+        data={"user_id": user_id},
+        name=_job_name(user_id),
+    )
+
+
+def trigger_first_lesson_if_today(job_queue, user_id: int, hour: int, minute: int):
+    """إن كان اليوم يوم دراسة (ليس أحد يومي إجازة الطالب) والوقت المختار لم يمرّ بعد،
+    يُجدوَل إرسال أول درس اليوم فورًا في ذلك الوقت عبر run_once — بشكل صريح ومستقل عن
+    التوقيت الأول لـ run_daily، حتى لا يعتمد سلوك 'يبدأ اليوم' على تفاصيل داخلية في
+    cron/APScheduler."""
+    user = db.get_user(user_id)
+    if not user or not next_study_moment_is_today(user, hour, minute):
+        return False
+    now = datetime.now()
+    target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    delay_seconds = (target - now).total_seconds()
+    job_queue.run_once(
+        _daily_job,
+        when=delay_seconds,
+        data={"user_id": user_id},
+        name=f"first_lesson_today_{user_id}",
+    )
+    return True
+
+
+def remove_daily_lesson(job_queue, user_id: int):
+    for job in job_queue.get_jobs_by_name(_job_name(user_id)):
+        job.schedule_removal()
+
+
+def restore_all_schedules(job_queue):
+    """يُستدعى عند إقلاع البوت لإعادة بناء الجدولة من قاعدة البيانات فقط."""
+    for user in db.get_all_scheduled_users():
+        time_str = user.get("lesson_time")
+        if not time_str:
+            continue
         try:
-            # الحصول على المستخدمين الذين لديهم درس في هذا الوقت
-            hour, minute = current_time.split(':')
-            users = self.db.get_users_by_time(int(hour), int(minute))
-            
-            for user in users:
-                try:
-                    # التحقق من أن اليوم ليس يوم إجازة
-                    days_off = user.get('days_off', [])
-                    if current_day in days_off or current_day.lower() in [d.lower() for d in days_off]:
-                        # يوم إجازة، تخطي إرسال الدرس
-                        continue
-                    
-                    # إرسال الدرس للمستخدم
-                    self.send_lesson(user)
-                    
-                except Exception as e:
-                    logger.error(f"Error processing user {user.get('user_id')}: {e}")
-                    continue
-                    
-        except Exception as e:
-            logger.error(f"Error in check_lessons: {e}")
-    
-    def send_lesson(self, user):
-        """إرسال الدرس للمستخدم"""
-        try:
-            user_id = user['user_id']
-            level = user.get('level', 'A1')
-            current_lesson = user.get('current_lesson', 0)
-            language = user.get('language', 'ar')
-            is_subscribed = user.get('is_subscribed', False)
-            
-            # الحصول على الدرس التالي
-            lesson = lessons_manager.get_next_lesson(level, current_lesson)
-            
-            if not lesson:
-                # لا يوجد دروس جديدة، إرسال رسالة إكمال المستوى
-                self.bot.send_message(
-                    chat_id=user_id,
-                    text="🎉 مبروك! لقد أكملت جميع دروس هذا المستوى."
-                )
-                return
-            
-            # التحقق من إذا كان الدرس مدفوعاً
-            if not lesson.get('is_free', False) and not is_subscribed:
-                # إرسال رسالة الدفع
-                payment_message = (
-                    f"🔒 *{lesson.get('title', 'الدرس')}*\n\n"
-                    "هذا الدرس مدفوع. يرجى الاشتراك للحصول على جميع الدروس!\n\n"
-                    f"💰 سعر الاشتراك: 5$ للمستوى الكامل\n"
-                    f"🔗 [اضغط هنا للاشتراك]({Config.PAYMENT_LINK})"
-                )
-                self.bot.send_message(
-                    chat_id=user_id,
-                    text=payment_message,
-                    parse_mode='Markdown'
-                )
-                return
-            
-            # إرسال محتوى الدرس
-            content = lessons_manager.get_lesson_content_for_telegram(lesson, language)
-            
-            # إرسال النص
-            self.bot.send_message(
-                chat_id=user_id,
-                text=content,
-                parse_mode='Markdown'
-            )
-            
-            # إرسال الفيديو إذا وجد
-            if lesson.get('video_url'):
-                video_embed = lessons_manager.get_drive_file_embed(lesson['video_url'])
-                if video_embed:
-                    try:
-                        self.bot.send_video(
-                            chat_id=user_id,
-                            video=video_embed,
-                            caption="🎬 فيديو الدرس"
-                        )
-                    except Exception as e:
-                        logger.error(f"Error sending video: {e}")
-                        self.bot.send_message(
-                            chat_id=user_id,
-                            text=f"🎬 رابط الفيديو: {lesson['video_url']}"
-                        )
-            
-            # إرسال الصوت إذا وجد
-            if lesson.get('audio_url'):
-                audio_embed = lessons_manager.get_drive_file_embed(lesson['audio_url'])
-                if audio_embed:
-                    try:
-                        self.bot.send_audio(
-                            chat_id=user_id,
-                            audio=audio_embed,
-                            caption="🎵 تسجيل صوتي للدرس"
-                        )
-                    except Exception as e:
-                        logger.error(f"Error sending audio: {e}")
-                        self.bot.send_message(
-                            chat_id=user_id,
-                            text=f"🎵 رابط الصوت: {lesson['audio_url']}"
-                        )
-            
-            # إرسال الصورة إذا وجدت
-            if lesson.get('image_url'):
-                image_embed = lessons_manager.get_drive_file_embed(lesson['image_url'])
-                if image_embed:
-                    try:
-                        self.bot.send_photo(
-                            chat_id=user_id,
-                            photo=image_embed,
-                            caption="🖼️ صورة توضيحية"
-                        )
-                    except Exception as e:
-                        logger.error(f"Error sending image: {e}")
-                        self.bot.send_message(
-                            chat_id=user_id,
-                            text=f"🖼️ رابط الصورة: {lesson['image_url']}"
-                        )
-            
-            # تحديث الدرس الحالي للمستخدم
-            self.db.update_user(user_id, current_lesson=lesson['id'])
-            
-            # تسجيل إكمال الدرس
-            self.db.record_lesson_completion(user_id, lesson['id'])
-            
-            logger.info(f"Lesson {lesson['id']} sent to user {user_id}")
-            
-        except Exception as e:
-            logger.error(f"Error sending lesson: {e}")
-    
-    def cleanup(self):
-        """تنظيف المهام القديمة"""
-        logger.info("Running cleanup job")
-    
-    def stop(self):
-        """إيقاف الجدولة"""
-        self.scheduler.shutdown()
+            hour, minute = map(int, time_str.split(":"))
+        except ValueError:
+            continue
+        schedule_daily_lesson(job_queue, user["user_id"], hour, minute)
+
+
+def next_study_moment_is_today(user: dict, hour: int, minute: int) -> bool:
+    """True إذا كان اليوم ليس أحد يومي إجازة هذا الطالب، والوقت المختار لم يمر بعد."""
+    now = datetime.now()
+    if db.is_vacation_day(user, now.weekday()):
+        return False
+    target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return target > now
